@@ -1,0 +1,78 @@
+package model
+
+import (
+	"encoding/json"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type User struct {
+	ID          uuid.UUID `json:"id"`
+	Email       string    `json:"email"`
+	DisplayName string    `json:"display_name"`
+	AvatarURL   *string   `json:"avatar_url,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+
+	PasswordHash *string `json:"-"`
+	GoogleID     *string `json:"-"`
+}
+
+type Profile struct {
+	ID        uuid.UUID       `json:"id"`
+	UserID    uuid.UUID       `json:"user_id"`
+	Name      string          `json:"name"`
+	Settings  json.RawMessage `json:"settings"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
+	DeletedAt *time.Time      `json:"deleted_at,omitempty"`
+}
+
+type Board struct {
+	ID        uuid.UUID  `json:"id"`
+	ProfileID uuid.UUID  `json:"profile_id"`
+	Name      string     `json:"name"`
+	GridRows  int        `json:"grid_rows"`
+	GridCols  int        `json:"grid_cols"`
+	IsRoot    bool       `json:"is_root"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
+	Cells     []Cell     `json:"cells,omitempty"`
+}
+
+const (
+	CellActionSpeak    = "speak"
+	CellActionNavigate = "navigate"
+)
+
+type Cell struct {
+	ID              uuid.UUID  `json:"id"`
+	BoardID         uuid.UUID  `json:"board_id"`
+	RowIndex        int        `json:"row_index"`
+	ColIndex        int        `json:"col_index"`
+	Label           string     `json:"label"`
+	SpeakText       *string    `json:"speak_text,omitempty"`
+	SymbolID        *uuid.UUID `json:"symbol_id,omitempty"`
+	BackgroundColor *string    `json:"background_color,omitempty"`
+	ActionType      string     `json:"action_type"`
+	TargetBoardID   *uuid.UUID `json:"target_board_id,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
+	DeletedAt       *time.Time `json:"deleted_at,omitempty"`
+}
+
+type Symbol struct {
+	ID          uuid.UUID  `json:"id"`
+	OwnerUserID *uuid.UUID `json:"owner_user_id,omitempty"`
+	Pack        string     `json:"pack"`
+	PackRef     *string    `json:"pack_ref,omitempty"`
+	Label       string     `json:"label"`
+	Keywords    []string   `json:"keywords"`
+	ImageURL    *string    `json:"image_url,omitempty"`
+	License     *string    `json:"license,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	DeletedAt   *time.Time `json:"deleted_at,omitempty"`
+}
