@@ -79,16 +79,45 @@ flutter --no-version-check analyze
    kosakata inti Bahasa Indonesia (warna Fitzgerald key, 4x6).
    Semua endpoint di `/api/v1`. Integration test end-to-end:
    `internal/handler/api_test.go`. (Selesai 2026-07-07)
-4. ⬜ **Flutter inti** — grid papan simbol, tap → TTS (`flutter_tts`,
-   offline, Bahasa Indonesia), sentence strip (susun kalimat → ucapkan),
-   navigasi antar papan/kategori, storage lokal `drift`/SQLite
-   (offline-first).
+4. ✅ **Flutter inti** — `lib/data/db.dart` (drift:
+   Profiles/Boards/Cells/Symbols, mirror skema server + kolom `dirty`
+   untuk sync Fase 6; codegen `db.g.dart` via build_runner),
+   `lib/data/seed.dart` (papan utama 5x6 = 24 kosakata inti + 2 sel
+   navigasi ke papan Makanan 3x4 & Minuman 2x4),
+   `lib/data/board_repository.dart`, `lib/services/speech_service.dart`
+   (abstraksi SpeechService + impl flutter_tts id-ID, fake-able di
+   test), `lib/state/communication_state.dart` (ChangeNotifier: board
+   stack, sentence strip, tapCell speak/navigate), `lib/ui/`
+   (Material 3, grid + sentence strip). 6 unit test pass
+   (`test/communication_test.dart`, drift in-memory + FakeSpeech),
+   analyzer bersih, `flutter build web` sukses. Flutter di-upgrade
+   3.7.7 → 3.44.5. BELUM diuji di device/simulator nyata (suara TTS
+   & rasa UI perlu dicoba manual di iPad/simulator).
+   (Selesai 2026-07-07)
 5. ⬜ **Editor papan** — mode edit caregiver: tambah/ubah sel, pilih
    simbol dari pustaka/foto sendiri, atur ukuran grid, parental gate.
 6. ⬜ **Sync & akun** — login di Flutter, sinkronisasi dua arah,
    berbagi papan antar akun.
 7. ⬜ **Polish** — layout iPad landscape, aksesibilitas (tap target,
    kontras), pengaturan suara/kecepatan TTS, build web & Android, testing.
+
+## TODO sisi user (tidak bisa dikerjakan Claude)
+
+- [ ] Buat repo GitHub + push pertama (commit belum pernah dibuat).
+- [ ] Railway: project + service Postgres + service repo (Root Directory
+  = `backend`), env `DATABASE_URL` (reference), `JWT_SECRET`,
+  Volume di `/data` + `UPLOAD_DIR=/data/uploads`.
+- [ ] Google Cloud Console: OAuth Client ID (iOS/Android/Web) →
+  env `GOOGLE_CLIENT_IDS` (dipisah koma) untuk login Google.
+
+## Catatan lingkungan dev
+
+- Mac pertama (id00242): Flutter di `~/development/flutter`; per
+  2026-07-07 sedang di-upgrade dari 3.7.7 ke stable terbaru (3.44).
+  Kalau flutter command menggantung, pakai `--no-version-check`.
+- Laptop lain: cukup clone repo — CLAUDE.md ini adalah sumber
+  kebenaran status proyek. Pastikan Flutter stable terbaru (Dart ≥3.5)
+  dan Go ≥1.24.
 
 ## Keputusan arsitektur
 
