@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/mail"
 	"strings"
 	"time"
@@ -12,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/syarifhidayatullah/aac-app/backend/internal/email"
 	"github.com/syarifhidayatullah/aac-app/backend/internal/model"
 	"github.com/syarifhidayatullah/aac-app/backend/internal/repository"
 )
@@ -20,17 +24,23 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrInvalidInput       = errors.New("invalid input")
 	ErrGoogleDisabled     = errors.New("google login is not configured")
+	ErrInvalidVerifyToken = errors.New("invalid or expired verification token")
+	ErrAlreadyVerified    = errors.New("email already verified")
 )
 
+const verificationTokenTTL = 24 * time.Hour
+
 type Auth struct {
-	repo   *repository.Repo
-	secret []byte
-	ttl    time.Duration
-	google GoogleVerifier // nil = login Google dinonaktifkan
+	repo       *repository.Repo
+	secret     []byte
+	ttl        time.Duration
+	google     GoogleVerifier // nil = login Google dinonaktifkan
+	mailer     *email.Mailer  // nil = pengiriman email verifikasi di-skip
+	appBaseURL string
 }
 
-func NewAuth(repo *repository.Repo, secret []byte, ttl time.Duration, google GoogleVerifier) *Auth {
-	return &Auth{repo: repo, secret: secret, ttl: ttl, google: google}
+func NewAuth(repo *repository.Repo, secret []byte, ttl time.Duration, google GoogleVerifier, mailer *email.Mailer, appBaseURL string) *Auth {
+	return &Auth{repo: repo, secret: secret, ttl: ttl, google: google, mailer: mailer, appBaseURL: appBaseURL}
 }
 
 type AuthResult struct {
@@ -61,11 +71,77 @@ func (a *Auth) Register(ctx context.Context, email, password, displayName string
 		Email:        email,
 		DisplayName:  displayName,
 		PasswordHash: &hashStr,
+		IsVerified:   false,
 	})
 	if err != nil {
 		return nil, err
 	}
+
+	// Best-effort: gagal kirim email verifikasi tidak menggagalkan
+	// registrasi (user masih bisa pakai app, cuma fitur akun ter-gate
+	// oleh RequireVerified sampai dia verifikasi).
+	if err := a.SendVerificationEmail(ctx, user); err != nil {
+		slog.Warn("send verification email failed", "user_id", user.ID, "error", err)
+	}
+
 	return a.result(user)
+}
+
+// SendVerificationEmail membuat token verifikasi baru (berlaku 24 jam)
+// dan mengirim link-nya ke email user. Dipakai saat register maupun
+// resend.
+func (a *Auth) SendVerificationEmail(ctx context.Context, user *model.User) error {
+	if a.mailer == nil {
+		slog.Warn("RESEND_API_KEY not set, skipping verification email", "user_id", user.ID)
+		return nil
+	}
+	tok, err := generateRawToken()
+	if err != nil {
+		return err
+	}
+	if err := a.repo.SaveVerificationToken(ctx, user.ID, tok, time.Now().Add(verificationTokenTTL)); err != nil {
+		return fmt.Errorf("save verification token: %w", err)
+	}
+	verifyURL := a.appBaseURL + "/api/v1/auth/verify-email?token=" + tok
+	return a.mailer.SendVerification(user.Email, user.DisplayName, verifyURL)
+}
+
+// ResendVerification mengirim ulang email verifikasi untuk user yang
+// sudah login tapi belum verifikasi.
+func (a *Auth) ResendVerification(ctx context.Context, userID uuid.UUID) error {
+	user, err := a.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if user.IsVerified {
+		return ErrAlreadyVerified
+	}
+	return a.SendVerificationEmail(ctx, user)
+}
+
+// VerifyEmail menandai user pemilik token sebagai terverifikasi.
+// Token cuma bisa dipakai sekali (dihapus setelah berhasil).
+func (a *Auth) VerifyEmail(ctx context.Context, token string) (*model.User, error) {
+	userID, err := a.repo.FindVerificationToken(ctx, token)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, ErrInvalidVerifyToken
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := a.repo.MarkUserVerified(ctx, userID); err != nil {
+		return nil, fmt.Errorf("mark verified: %w", err)
+	}
+	_ = a.repo.DeleteVerificationToken(ctx, token)
+	return a.repo.GetUserByID(ctx, userID)
+}
+
+func generateRawToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
 }
 
 func (a *Auth) Login(ctx context.Context, email, password string) (*AuthResult, error) {
@@ -138,6 +214,7 @@ func (a *Auth) LoginWithGoogle(ctx context.Context, idToken string) (*AuthResult
 		DisplayName: displayName,
 		GoogleID:    &claims.Subject,
 		AvatarURL:   picture,
+		IsVerified:  true, // Google sudah verifikasi email-nya
 	})
 	if err != nil {
 		return nil, err

@@ -51,7 +51,7 @@ func TestAPI(t *testing.T) {
 
 	repo := repository.New(pool)
 	secret := []byte("test-secret")
-	auth := service.NewAuth(repo, secret, time.Hour, nil)
+	auth := service.NewAuth(repo, secret, time.Hour, nil, nil, "http://localhost:8080")
 	ts := httptest.NewServer(handler.NewRouter(handler.Deps{
 		Repo:           repo,
 		Auth:           auth,
@@ -116,6 +116,14 @@ func TestAPI(t *testing.T) {
 	})
 	mustStatus(status, http.StatusCreated, "register")
 	token := obj(res)["token"].(string)
+	userID := uuid.MustParse(obj(obj(res)["user"])["id"].(string))
+
+	// Simulasikan user klik link verifikasi di email (mailer nil di
+	// test ini, jadi tidak ada email beneran terkirim) — endpoint
+	// sync/share sengaja di-gate RequireVerified.
+	if err := repo.MarkUserVerified(t.Context(), userID); err != nil {
+		t.Fatalf("mark verified: %v", err)
+	}
 
 	status, _ = call("POST", "/api/v1/auth/register", "", map[string]any{
 		"email": "budi@example.com", "password": "rahasia123",
@@ -192,6 +200,34 @@ func TestAPI(t *testing.T) {
 	})
 	mustStatus(status, http.StatusCreated, "register second user")
 	intruderToken := obj(res)["token"].(string)
+	intruderID := uuid.MustParse(obj(obj(res)["user"])["id"].(string))
+
+	// --- Verifikasi email (mailer nil di test, jadi cuma jalur di
+	// sisi server yang diuji, bukan pengiriman email sungguhan) ---
+	status, _ = call("POST", "/api/v1/boards/"+boardID+"/share", intruderToken, nil)
+	mustStatus(status, http.StatusForbidden, "share blocked before email verified")
+
+	status, _ = call("POST", "/api/v1/auth/resend-verification", intruderToken, nil)
+	mustStatus(status, http.StatusNoContent, "resend verification")
+
+	// verify-email dibuka lewat browser dari link email, balasnya HTML
+	// bukan JSON — pakai http client langsung, bukan helper call().
+	verifyRes, err := ts.Client().Get(ts.URL + "/api/v1/auth/verify-email?token=token-yang-salah")
+	if err != nil {
+		t.Fatalf("verify-email: %v", err)
+	}
+	verifyRes.Body.Close()
+	mustStatus(verifyRes.StatusCode, http.StatusBadRequest, "verify with bogus token")
+
+	if err := repo.MarkUserVerified(t.Context(), intruderID); err != nil {
+		t.Fatalf("mark intruder verified: %v", err)
+	}
+
+	status, _ = call("POST", "/api/v1/auth/resend-verification", intruderToken, nil)
+	mustStatus(status, http.StatusConflict, "resend after already verified")
+
+	status, _ = call("GET", "/api/v1/sync", intruderToken, nil)
+	mustStatus(status, http.StatusOK, "sync works regardless of verification status")
 
 	status, _ = call("GET", "/api/v1/boards/"+boardID, intruderToken, nil)
 	mustStatus(status, http.StatusNotFound, "other user's board must be hidden")

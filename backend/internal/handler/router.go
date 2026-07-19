@@ -55,11 +55,13 @@ func NewRouter(d Deps) http.Handler {
 		r.Post("/auth/register", ah.register)
 		r.Post("/auth/login", ah.login)
 		r.Post("/auth/google", ah.google)
+		r.Get("/auth/verify-email", ah.verifyEmail)
 
 		r.Group(func(r chi.Router) {
 			r.Use(appmw.Auth(d.JWTSecret))
 
 			r.Get("/me", ah.me)
+			r.Post("/auth/resend-verification", ah.resendVerification)
 
 			r.Get("/profiles", ph.list)
 			r.Post("/profiles", ph.create)
@@ -73,9 +75,6 @@ func NewRouter(d Deps) http.Handler {
 			r.Put("/boards/{boardID}/cells", bh.replaceCells)
 			r.Delete("/boards/{boardID}", bh.delete)
 
-			r.Post("/boards/{boardID}/share", rh.create)
-			r.Post("/boards/import", rh.importBoard)
-
 			r.Get("/symbols", sh.list)
 			r.Post("/symbols", sh.create)
 			r.Delete("/symbols/{symbolID}", sh.delete)
@@ -84,6 +83,19 @@ func NewRouter(d Deps) http.Handler {
 
 			r.Get("/sync", yh.pull)
 			r.Post("/sync", yh.push)
+
+			// Berbagi papan nyentuh akun LAIN (kode share bisa
+			// diimpor siapa saja) — di-gate verifikasi email. Sync
+			// sengaja TIDAK di-gate: itu cuma nyinkronin data user
+			// sendiri, dan dipanggil otomatis tepat setelah register
+			// (lihat AccountState.signIn di Flutter) jadi kalau
+			// digate, user baru langsung gagal sync begitu daftar.
+			r.Group(func(r chi.Router) {
+				r.Use(appmw.RequireVerified(d.Repo))
+
+				r.Post("/boards/{boardID}/share", rh.create)
+				r.Post("/boards/import", rh.importBoard)
+			})
 		})
 	})
 

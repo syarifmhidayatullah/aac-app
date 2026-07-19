@@ -11,6 +11,7 @@ import (
 
 	"github.com/syarifhidayatullah/aac-app/backend/internal/config"
 	"github.com/syarifhidayatullah/aac-app/backend/internal/db"
+	"github.com/syarifhidayatullah/aac-app/backend/internal/email"
 	"github.com/syarifhidayatullah/aac-app/backend/internal/handler"
 	"github.com/syarifhidayatullah/aac-app/backend/internal/repository"
 	"github.com/syarifhidayatullah/aac-app/backend/internal/service"
@@ -51,7 +52,15 @@ func run() error {
 	} else {
 		log.Println("GOOGLE_CLIENT_IDS not set; google login disabled")
 	}
-	auth := service.NewAuth(repo, cfg.JWTSecret, cfg.TokenTTL, google)
+
+	var mailer *email.Mailer
+	if cfg.EmailEnabled() {
+		mailer = email.New(cfg.ResendAPIKey, cfg.EmailFrom)
+	} else {
+		log.Println("RESEND_API_KEY not set; verification emails disabled")
+	}
+
+	auth := service.NewAuth(repo, cfg.JWTSecret, cfg.TokenTTL, google, mailer, cfg.AppBaseURL)
 
 	srv := &http.Server{
 		Addr: ":" + cfg.Port,

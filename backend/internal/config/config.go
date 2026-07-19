@@ -20,6 +20,14 @@ type Config struct {
 	GoogleClientIDs []string
 	UploadDir       string
 	AllowedOrigins  []string
+
+	ResendAPIKey string
+	EmailFrom    string
+	AppBaseURL   string
+}
+
+func (c *Config) EmailEnabled() bool {
+	return c.ResendAPIKey != ""
 }
 
 // Load membaca konfigurasi dari env (plus ./.env kalau ada, tanpa
@@ -54,6 +62,10 @@ func Load() (*Config, error) {
 
 	cfg.GoogleClientIDs = splitCSV(os.Getenv("GOOGLE_CLIENT_IDS"))
 	cfg.AllowedOrigins = splitCSV(getenv("ALLOWED_ORIGINS", "*"))
+
+	cfg.ResendAPIKey = os.Getenv("RESEND_API_KEY")
+	cfg.EmailFrom = getenv("EMAIL_FROM", "AAC App <noreply@aacapp.app>")
+	cfg.AppBaseURL = getenv("APP_BASE_URL", "http://localhost:"+cfg.Port)
 	return cfg, nil
 }
 

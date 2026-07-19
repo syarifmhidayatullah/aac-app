@@ -12,6 +12,7 @@ type User struct {
 	Email       string    `json:"email"`
 	DisplayName string    `json:"display_name"`
 	AvatarURL   *string   `json:"avatar_url,omitempty"`
+	IsVerified  bool      `json:"is_verified"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 
