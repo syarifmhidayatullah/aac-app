@@ -146,6 +146,37 @@ void main() {
     expect(none, isEmpty);
   });
 
+  test('searchSymbols dengan limit+offset paging tanpa duplikat/kelewat',
+      () async {
+    const pageSize = 60;
+    final page1 = await repository.searchSymbols('', limit: pageSize);
+    expect(page1.length, pageSize);
+
+    final page2 = await repository.searchSymbols('',
+        limit: pageSize, offset: pageSize);
+    expect(page2.length, 98 - pageSize);
+
+    final page1Ids = page1.map((s) => s.id).toSet();
+    final page2Ids = page2.map((s) => s.id).toSet();
+    expect(page1Ids.intersection(page2Ids), isEmpty);
+    expect(page1Ids.length + page2Ids.length, 98);
+
+    // Gabungan dua halaman = hasil tanpa paging sama sekali.
+    final all = await repository.searchSymbols('');
+    expect({...page1Ids, ...page2Ids}, all.map((s) => s.id).toSet());
+  });
+
+  test('symbolCategoriesInUse mengembalikan kategori sesuai urutan',
+      () async {
+    final categories = await repository.symbolCategoriesInUse();
+    expect(categories, isNotEmpty);
+    expect(categories, containsAll(['Dasar', 'Warna', 'Hewan']));
+    // Urutannya harus mengikuti symbolCategories, bukan alfabetis.
+    final expectedOrder =
+        symbolCategories.where(categories.contains).toList();
+    expect(categories, expectedOrder);
+  });
+
   test('createSymbol mendaftarkan simbol custom yang bisa dicari',
       () async {
     final symbol = await repository.createSymbol(

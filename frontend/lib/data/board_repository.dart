@@ -199,8 +199,9 @@ class BoardRepository {
   /// Cari simbol aktif berdasarkan label/keywords (case-insensitive),
   /// opsional dibatasi ke satu [category]. Query kosong mengembalikan
   /// semuanya di kategori itu (untuk browsing pustaka).
+  /// [offset] dipakai untuk infinite-scroll di symbol picker.
   Future<List<Symbol>> searchSymbols(String query,
-      {String? category, int limit = 150}) {
+      {String? category, int limit = 150, int offset = 0}) {
     final select = _db.select(_db.symbols)
       ..where((s) => s.deletedAt.isNull());
     final q = query.trim();
@@ -214,7 +215,7 @@ class BoardRepository {
     }
     select
       ..orderBy([(s) => OrderingTerm(expression: s.label)])
-      ..limit(limit);
+      ..limit(limit, offset: offset);
     return select.get();
   }
 

@@ -38,23 +38,30 @@ class _SymbolPickerSheet extends StatefulWidget {
   State<_SymbolPickerSheet> createState() => _SymbolPickerSheetState();
 }
 
+const _pageSize = 60;
+
 class _SymbolPickerSheetState extends State<_SymbolPickerSheet> {
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
   final _picker = ImagePicker();
   List<Symbol> _results = [];
   List<String> _categories = [];
   String? _selectedCategory;
   bool _loading = true;
+  bool _loadingMore = false;
+  bool _hasMore = true;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _init();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -64,14 +71,43 @@ class _SymbolPickerSheetState extends State<_SymbolPickerSheet> {
     await _search('');
   }
 
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 300) {
+      _loadMore();
+    }
+  }
+
+  /// Query baru (ganti kata kunci/kategori): reset ke halaman pertama.
   Future<void> _search(String query) async {
     final repo = context.read<BoardRepository>();
-    final results =
-        await repo.searchSymbols(query, category: _selectedCategory);
+    final results = await repo.searchSymbols(query,
+        category: _selectedCategory, limit: _pageSize);
     if (!mounted) return;
     setState(() {
       _results = results;
       _loading = false;
+      _hasMore = results.length == _pageSize;
+    });
+  }
+
+  /// Ambil halaman berikutnya untuk infinite-scroll.
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    final repo = context.read<BoardRepository>();
+    final next = await repo.searchSymbols(
+      _searchController.text,
+      category: _selectedCategory,
+      limit: _pageSize,
+      offset: _results.length,
+    );
+    if (!mounted) return;
+    setState(() {
+      _results = [..._results, ...next];
+      _loadingMore = false;
+      _hasMore = next.length == _pageSize;
     });
   }
 
@@ -178,15 +214,27 @@ class _SymbolPickerSheetState extends State<_SymbolPickerSheet> {
                         ),
                       )
                     : GridView.builder(
-                        padding: const EdgeInsets.all(16),
+                        controller: _scrollController,
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                         gridDelegate:
                             const SliverGridDelegateWithMaxCrossAxisExtent(
                           maxCrossAxisExtent: 110,
                           mainAxisSpacing: 8,
                           crossAxisSpacing: 8,
                         ),
-                        itemCount: _results.length,
+                        itemCount:
+                            _results.length + (_loadingMore ? 1 : 0),
                         itemBuilder: (context, index) {
+                          if (index >= _results.length) {
+                            return const Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2),
+                              ),
+                            );
+                          }
                           final symbol = _results[index];
                           return InkWell(
                             onTap: () => Navigator.of(context).pop(symbol),
