@@ -80,7 +80,8 @@ void main() {
     expect(find.text('Khusus orang tua'), findsOneWidget);
 
     // Jawaban salah tidak membuka editor.
-    await tester.enterText(find.byType(TextField), '1');
+    await tester.tap(find.widgetWithText(OutlinedButton, '1'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Masuk'));
     await tester.pumpAndSettle();
     expect(find.text('Jawaban salah, coba lagi'), findsOneWidget);
