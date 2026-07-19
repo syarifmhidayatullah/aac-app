@@ -84,7 +84,7 @@ void main() {
     expect(pushed.profiles.length, 1);
     expect(pushed.boards.length, 3);
     expect(pushed.cells.length, 26 + 12 + 6);
-    expect(pushed.symbols.length, 143);
+    expect(pushed.symbols.length, 173);
 
     // Semua bersih setelah push.
     final dirtyCells = await (db.select(db.cells)

@@ -119,7 +119,7 @@ void main() {
 
   test('seed mengisi pustaka Mulberry dan menautkannya ke sel', () async {
     final symbols = await repository.searchSymbols('');
-    expect(symbols.length, 143);
+    expect(symbols.length, 173);
     expect(symbols.every((s) => s.pack == 'mulberry'), isTrue);
     expect(
         symbols.every(
