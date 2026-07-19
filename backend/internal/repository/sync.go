@@ -179,10 +179,10 @@ func pushSymbol(ctx context.Context, q querier, userID uuid.UUID, s *model.Symbo
 		s.Keywords = []string{}
 	}
 	tag, err := q.Exec(ctx, `
-		UPDATE symbols SET pack = $3, pack_ref = $4, label = $5, keywords = $6,
-			image_url = $7, deleted_at = $8
+		UPDATE symbols SET pack = $3, pack_ref = $4, label = $5, category = $6, keywords = $7,
+			image_url = $8, deleted_at = $9
 		WHERE id = $1 AND owner_user_id = $2`,
-		s.ID, userID, s.Pack, s.PackRef, s.Label, s.Keywords, s.ImageURL, s.DeletedAt)
+		s.ID, userID, s.Pack, s.PackRef, s.Label, s.Category, s.Keywords, s.ImageURL, s.DeletedAt)
 	if err != nil {
 		return err
 	}
@@ -190,9 +190,9 @@ func pushSymbol(ctx context.Context, q querier, userID uuid.UUID, s *model.Symbo
 		return nil
 	}
 	_, err = q.Exec(ctx, `
-		INSERT INTO symbols (id, owner_user_id, pack, pack_ref, label, keywords, image_url, deleted_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		s.ID, userID, s.Pack, s.PackRef, s.Label, s.Keywords, s.ImageURL, s.DeletedAt)
+		INSERT INTO symbols (id, owner_user_id, pack, pack_ref, label, category, keywords, image_url, deleted_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		s.ID, userID, s.Pack, s.PackRef, s.Label, s.Category, s.Keywords, s.ImageURL, s.DeletedAt)
 	if isUniqueViolation(err, "symbols_pkey") {
 		return ErrForbidden
 	}

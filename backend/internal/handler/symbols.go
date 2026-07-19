@@ -32,7 +32,8 @@ func (h *symbolHandler) list(w http.ResponseWriter, r *http.Request) {
 	}
 
 	symbols, err := h.repo.SearchSymbols(r.Context(), uid,
-		strings.TrimSpace(q.Get("q")), strings.TrimSpace(q.Get("pack")), limit, offset)
+		strings.TrimSpace(q.Get("q")), strings.TrimSpace(q.Get("pack")),
+		strings.TrimSpace(q.Get("category")), limit, offset)
 	if err != nil {
 		writeServiceError(w, err)
 		return

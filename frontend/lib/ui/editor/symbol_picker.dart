@@ -42,12 +42,14 @@ class _SymbolPickerSheetState extends State<_SymbolPickerSheet> {
   final _searchController = TextEditingController();
   final _picker = ImagePicker();
   List<Symbol> _results = [];
+  List<String> _categories = [];
+  String? _selectedCategory;
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _search('');
+    _init();
   }
 
   @override
@@ -56,14 +58,26 @@ class _SymbolPickerSheetState extends State<_SymbolPickerSheet> {
     super.dispose();
   }
 
+  Future<void> _init() async {
+    final repo = context.read<BoardRepository>();
+    _categories = await repo.symbolCategoriesInUse();
+    await _search('');
+  }
+
   Future<void> _search(String query) async {
     final repo = context.read<BoardRepository>();
-    final results = await repo.searchSymbols(query);
+    final results =
+        await repo.searchSymbols(query, category: _selectedCategory);
     if (!mounted) return;
     setState(() {
       _results = results;
       _loading = false;
     });
+  }
+
+  void _selectCategory(String? category) {
+    setState(() => _selectedCategory = category);
+    _search(_searchController.text);
   }
 
   Future<void> _pickPhoto(ImageSource source) async {
@@ -125,6 +139,34 @@ class _SymbolPickerSheetState extends State<_SymbolPickerSheet> {
               ],
             ),
           ),
+          if (_categories.isNotEmpty)
+            SizedBox(
+              height: 40,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      label: const Text('Semua'),
+                      selected: _selectedCategory == null,
+                      onSelected: (_) => _selectCategory(null),
+                    ),
+                  ),
+                  for (final category in _categories)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: ChoiceChip(
+                        label: Text(category),
+                        selected: _selectedCategory == category,
+                        onSelected: (_) => _selectCategory(category),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 8),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())

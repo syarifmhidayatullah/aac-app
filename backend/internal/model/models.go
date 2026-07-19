@@ -79,6 +79,7 @@ type Symbol struct {
 	Pack        string     `json:"pack"`
 	PackRef     *string    `json:"pack_ref,omitempty"`
 	Label       string     `json:"label"`
+	Category    *string    `json:"category,omitempty"`
 	Keywords    []string   `json:"keywords"`
 	ImageURL    *string    `json:"image_url,omitempty"`
 	License     *string    `json:"license,omitempty"`

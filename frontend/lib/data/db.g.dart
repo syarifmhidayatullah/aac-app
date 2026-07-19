@@ -1492,6 +1492,12 @@ class $SymbolsTable extends Symbols with TableInfo<$SymbolsTable, Symbol> {
   late final GeneratedColumn<String> label = GeneratedColumn<String>(
       'label', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _categoryMeta =
+      const VerificationMeta('category');
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+      'category', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _keywordsMeta =
       const VerificationMeta('keywords');
   @override
@@ -1541,6 +1547,7 @@ class $SymbolsTable extends Symbols with TableInfo<$SymbolsTable, Symbol> {
         pack,
         packRef,
         label,
+        category,
         keywords,
         imageUrl,
         license,
@@ -1576,6 +1583,10 @@ class $SymbolsTable extends Symbols with TableInfo<$SymbolsTable, Symbol> {
           _labelMeta, label.isAcceptableOrUnknown(data['label']!, _labelMeta));
     } else if (isInserting) {
       context.missing(_labelMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(_categoryMeta,
+          category.isAcceptableOrUnknown(data['category']!, _categoryMeta));
     }
     if (data.containsKey('keywords')) {
       context.handle(_keywordsMeta,
@@ -1618,6 +1629,8 @@ class $SymbolsTable extends Symbols with TableInfo<$SymbolsTable, Symbol> {
           .read(DriftSqlType.string, data['${effectivePrefix}pack_ref']),
       label: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}label'])!,
+      category: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category']),
       keywords: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}keywords'])!,
       imageUrl: attachedDatabase.typeMapping
@@ -1644,6 +1657,7 @@ class Symbol extends DataClass implements Insertable<Symbol> {
   final String pack;
   final String? packRef;
   final String label;
+  final String? category;
 
   /// Disimpan sebagai JSON array string.
   final String keywords;
@@ -1657,6 +1671,7 @@ class Symbol extends DataClass implements Insertable<Symbol> {
       required this.pack,
       this.packRef,
       required this.label,
+      this.category,
       required this.keywords,
       this.imageUrl,
       this.license,
@@ -1672,6 +1687,9 @@ class Symbol extends DataClass implements Insertable<Symbol> {
       map['pack_ref'] = Variable<String>(packRef);
     }
     map['label'] = Variable<String>(label);
+    if (!nullToAbsent || category != null) {
+      map['category'] = Variable<String>(category);
+    }
     map['keywords'] = Variable<String>(keywords);
     if (!nullToAbsent || imageUrl != null) {
       map['image_url'] = Variable<String>(imageUrl);
@@ -1695,6 +1713,9 @@ class Symbol extends DataClass implements Insertable<Symbol> {
           ? const Value.absent()
           : Value(packRef),
       label: Value(label),
+      category: category == null && nullToAbsent
+          ? const Value.absent()
+          : Value(category),
       keywords: Value(keywords),
       imageUrl: imageUrl == null && nullToAbsent
           ? const Value.absent()
@@ -1718,6 +1739,7 @@ class Symbol extends DataClass implements Insertable<Symbol> {
       pack: serializer.fromJson<String>(json['pack']),
       packRef: serializer.fromJson<String?>(json['packRef']),
       label: serializer.fromJson<String>(json['label']),
+      category: serializer.fromJson<String?>(json['category']),
       keywords: serializer.fromJson<String>(json['keywords']),
       imageUrl: serializer.fromJson<String?>(json['imageUrl']),
       license: serializer.fromJson<String?>(json['license']),
@@ -1734,6 +1756,7 @@ class Symbol extends DataClass implements Insertable<Symbol> {
       'pack': serializer.toJson<String>(pack),
       'packRef': serializer.toJson<String?>(packRef),
       'label': serializer.toJson<String>(label),
+      'category': serializer.toJson<String?>(category),
       'keywords': serializer.toJson<String>(keywords),
       'imageUrl': serializer.toJson<String?>(imageUrl),
       'license': serializer.toJson<String?>(license),
@@ -1748,6 +1771,7 @@ class Symbol extends DataClass implements Insertable<Symbol> {
           String? pack,
           Value<String?> packRef = const Value.absent(),
           String? label,
+          Value<String?> category = const Value.absent(),
           String? keywords,
           Value<String?> imageUrl = const Value.absent(),
           Value<String?> license = const Value.absent(),
@@ -1759,6 +1783,7 @@ class Symbol extends DataClass implements Insertable<Symbol> {
         pack: pack ?? this.pack,
         packRef: packRef.present ? packRef.value : this.packRef,
         label: label ?? this.label,
+        category: category.present ? category.value : this.category,
         keywords: keywords ?? this.keywords,
         imageUrl: imageUrl.present ? imageUrl.value : this.imageUrl,
         license: license.present ? license.value : this.license,
@@ -1772,6 +1797,7 @@ class Symbol extends DataClass implements Insertable<Symbol> {
       pack: data.pack.present ? data.pack.value : this.pack,
       packRef: data.packRef.present ? data.packRef.value : this.packRef,
       label: data.label.present ? data.label.value : this.label,
+      category: data.category.present ? data.category.value : this.category,
       keywords: data.keywords.present ? data.keywords.value : this.keywords,
       imageUrl: data.imageUrl.present ? data.imageUrl.value : this.imageUrl,
       license: data.license.present ? data.license.value : this.license,
@@ -1788,6 +1814,7 @@ class Symbol extends DataClass implements Insertable<Symbol> {
           ..write('pack: $pack, ')
           ..write('packRef: $packRef, ')
           ..write('label: $label, ')
+          ..write('category: $category, ')
           ..write('keywords: $keywords, ')
           ..write('imageUrl: $imageUrl, ')
           ..write('license: $license, ')
@@ -1799,8 +1826,8 @@ class Symbol extends DataClass implements Insertable<Symbol> {
   }
 
   @override
-  int get hashCode => Object.hash(id, pack, packRef, label, keywords, imageUrl,
-      license, updatedAt, deletedAt, dirty);
+  int get hashCode => Object.hash(id, pack, packRef, label, category, keywords,
+      imageUrl, license, updatedAt, deletedAt, dirty);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1809,6 +1836,7 @@ class Symbol extends DataClass implements Insertable<Symbol> {
           other.pack == this.pack &&
           other.packRef == this.packRef &&
           other.label == this.label &&
+          other.category == this.category &&
           other.keywords == this.keywords &&
           other.imageUrl == this.imageUrl &&
           other.license == this.license &&
@@ -1822,6 +1850,7 @@ class SymbolsCompanion extends UpdateCompanion<Symbol> {
   final Value<String> pack;
   final Value<String?> packRef;
   final Value<String> label;
+  final Value<String?> category;
   final Value<String> keywords;
   final Value<String?> imageUrl;
   final Value<String?> license;
@@ -1834,6 +1863,7 @@ class SymbolsCompanion extends UpdateCompanion<Symbol> {
     this.pack = const Value.absent(),
     this.packRef = const Value.absent(),
     this.label = const Value.absent(),
+    this.category = const Value.absent(),
     this.keywords = const Value.absent(),
     this.imageUrl = const Value.absent(),
     this.license = const Value.absent(),
@@ -1847,6 +1877,7 @@ class SymbolsCompanion extends UpdateCompanion<Symbol> {
     this.pack = const Value.absent(),
     this.packRef = const Value.absent(),
     required String label,
+    this.category = const Value.absent(),
     this.keywords = const Value.absent(),
     this.imageUrl = const Value.absent(),
     this.license = const Value.absent(),
@@ -1861,6 +1892,7 @@ class SymbolsCompanion extends UpdateCompanion<Symbol> {
     Expression<String>? pack,
     Expression<String>? packRef,
     Expression<String>? label,
+    Expression<String>? category,
     Expression<String>? keywords,
     Expression<String>? imageUrl,
     Expression<String>? license,
@@ -1874,6 +1906,7 @@ class SymbolsCompanion extends UpdateCompanion<Symbol> {
       if (pack != null) 'pack': pack,
       if (packRef != null) 'pack_ref': packRef,
       if (label != null) 'label': label,
+      if (category != null) 'category': category,
       if (keywords != null) 'keywords': keywords,
       if (imageUrl != null) 'image_url': imageUrl,
       if (license != null) 'license': license,
@@ -1889,6 +1922,7 @@ class SymbolsCompanion extends UpdateCompanion<Symbol> {
       Value<String>? pack,
       Value<String?>? packRef,
       Value<String>? label,
+      Value<String?>? category,
       Value<String>? keywords,
       Value<String?>? imageUrl,
       Value<String?>? license,
@@ -1901,6 +1935,7 @@ class SymbolsCompanion extends UpdateCompanion<Symbol> {
       pack: pack ?? this.pack,
       packRef: packRef ?? this.packRef,
       label: label ?? this.label,
+      category: category ?? this.category,
       keywords: keywords ?? this.keywords,
       imageUrl: imageUrl ?? this.imageUrl,
       license: license ?? this.license,
@@ -1925,6 +1960,9 @@ class SymbolsCompanion extends UpdateCompanion<Symbol> {
     }
     if (label.present) {
       map['label'] = Variable<String>(label.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
     }
     if (keywords.present) {
       map['keywords'] = Variable<String>(keywords.value);
@@ -1957,6 +1995,7 @@ class SymbolsCompanion extends UpdateCompanion<Symbol> {
           ..write('pack: $pack, ')
           ..write('packRef: $packRef, ')
           ..write('label: $label, ')
+          ..write('category: $category, ')
           ..write('keywords: $keywords, ')
           ..write('imageUrl: $imageUrl, ')
           ..write('license: $license, ')
@@ -3041,6 +3080,7 @@ typedef $$SymbolsTableCreateCompanionBuilder = SymbolsCompanion Function({
   Value<String> pack,
   Value<String?> packRef,
   required String label,
+  Value<String?> category,
   Value<String> keywords,
   Value<String?> imageUrl,
   Value<String?> license,
@@ -3054,6 +3094,7 @@ typedef $$SymbolsTableUpdateCompanionBuilder = SymbolsCompanion Function({
   Value<String> pack,
   Value<String?> packRef,
   Value<String> label,
+  Value<String?> category,
   Value<String> keywords,
   Value<String?> imageUrl,
   Value<String?> license,
@@ -3083,6 +3124,9 @@ class $$SymbolsTableFilterComposer
 
   ColumnFilters<String> get label => $composableBuilder(
       column: $table.label, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get keywords => $composableBuilder(
       column: $table.keywords, builder: (column) => ColumnFilters(column));
@@ -3124,6 +3168,9 @@ class $$SymbolsTableOrderingComposer
   ColumnOrderings<String> get label => $composableBuilder(
       column: $table.label, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get keywords => $composableBuilder(
       column: $table.keywords, builder: (column) => ColumnOrderings(column));
 
@@ -3163,6 +3210,9 @@ class $$SymbolsTableAnnotationComposer
 
   GeneratedColumn<String> get label =>
       $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
 
   GeneratedColumn<String> get keywords =>
       $composableBuilder(column: $table.keywords, builder: (column) => column);
@@ -3210,6 +3260,7 @@ class $$SymbolsTableTableManager extends RootTableManager<
             Value<String> pack = const Value.absent(),
             Value<String?> packRef = const Value.absent(),
             Value<String> label = const Value.absent(),
+            Value<String?> category = const Value.absent(),
             Value<String> keywords = const Value.absent(),
             Value<String?> imageUrl = const Value.absent(),
             Value<String?> license = const Value.absent(),
@@ -3223,6 +3274,7 @@ class $$SymbolsTableTableManager extends RootTableManager<
             pack: pack,
             packRef: packRef,
             label: label,
+            category: category,
             keywords: keywords,
             imageUrl: imageUrl,
             license: license,
@@ -3236,6 +3288,7 @@ class $$SymbolsTableTableManager extends RootTableManager<
             Value<String> pack = const Value.absent(),
             Value<String?> packRef = const Value.absent(),
             required String label,
+            Value<String?> category = const Value.absent(),
             Value<String> keywords = const Value.absent(),
             Value<String?> imageUrl = const Value.absent(),
             Value<String?> license = const Value.absent(),
@@ -3249,6 +3302,7 @@ class $$SymbolsTableTableManager extends RootTableManager<
             pack: pack,
             packRef: packRef,
             label: label,
+            category: category,
             keywords: keywords,
             imageUrl: imageUrl,
             license: license,

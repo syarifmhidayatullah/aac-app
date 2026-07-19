@@ -59,6 +59,7 @@ class Symbols extends Table {
   TextColumn get pack => text().withDefault(const Constant('custom'))();
   TextColumn get packRef => text().nullable()();
   TextColumn get label => text()();
+  TextColumn get category => text().nullable()();
 
   /// Disimpan sebagai JSON array string.
   TextColumn get keywords => text().withDefault(const Constant('[]'))();
@@ -80,5 +81,15 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.withExecutor(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(symbols, symbols.category);
+          }
+        },
+      );
 }

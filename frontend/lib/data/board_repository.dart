@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import 'db.dart';
+import 'seed.dart' show symbolCategories;
 
 const _uuid = Uuid();
 
@@ -195,9 +196,11 @@ class BoardRepository {
 
   // -------------------------------------------------------------- symbols
 
-  /// Cari simbol aktif berdasarkan label/keywords (case-insensitive).
-  /// Query kosong mengembalikan semuanya (untuk browsing pustaka).
-  Future<List<Symbol>> searchSymbols(String query, {int limit = 150}) {
+  /// Cari simbol aktif berdasarkan label/keywords (case-insensitive),
+  /// opsional dibatasi ke satu [category]. Query kosong mengembalikan
+  /// semuanya di kategori itu (untuk browsing pustaka).
+  Future<List<Symbol>> searchSymbols(String query,
+      {String? category, int limit = 150}) {
     final select = _db.select(_db.symbols)
       ..where((s) => s.deletedAt.isNull());
     final q = query.trim();
@@ -206,10 +209,25 @@ class BoardRepository {
       select.where((s) =>
           s.label.lower().like(pattern) | s.keywords.lower().like(pattern));
     }
+    if (category != null) {
+      select.where((s) => s.category.equals(category));
+    }
     select
       ..orderBy([(s) => OrderingTerm(expression: s.label)])
       ..limit(limit);
     return select.get();
+  }
+
+  /// Semua nama kategori yang punya minimal satu simbol, terurut sesuai
+  /// [symbolCategories].
+  Future<List<String>> symbolCategoriesInUse() async {
+    final rows = await (_db.selectOnly(_db.symbols, distinct: true)
+          ..addColumns([_db.symbols.category])
+          ..where(_db.symbols.deletedAt.isNull() & _db.symbols.category.isNotNull()))
+        .map((row) => row.read(_db.symbols.category)!)
+        .get();
+    final inUse = rows.toSet();
+    return symbolCategories.where(inUse.contains).toList();
   }
 
   /// Daftarkan simbol custom (foto pengguna).
