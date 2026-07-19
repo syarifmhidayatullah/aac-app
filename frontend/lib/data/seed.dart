@@ -61,7 +61,7 @@ const _mulberrySymbols = <String, _SymbolSpec>{
   'help': _SymbolSpec('Tolong', ['tolong', 'bantu'], 'help_,_to.svg', 'Dasar'),
   'ask': _SymbolSpec('Minta', ['minta'], 'ask_,_to.svg', 'Dasar'),
   'more': _SymbolSpec('Lagi', ['lagi', 'tambah'], 'more.svg', 'Dasar'),
-  'finish': _SymbolSpec('Sudah', ['sudah', 'selesai'], 'finish.svg', 'Dasar'),
+  'finish': _SymbolSpec('Sudah', ['sudah', 'selesai'], 'correct.svg', 'Dasar'),
   'yes': _SymbolSpec('Ya', ['ya', 'iya', 'setuju'], 'nod_,_to.svg', 'Dasar'),
   'no': _SymbolSpec('Tidak', ['tidak', 'bukan'], 'mistake_no_wrong.svg', 'Dasar'),
 
