@@ -197,7 +197,7 @@ class BoardRepository {
 
   /// Cari simbol aktif berdasarkan label/keywords (case-insensitive).
   /// Query kosong mengembalikan semuanya (untuk browsing pustaka).
-  Future<List<Symbol>> searchSymbols(String query, {int limit = 60}) {
+  Future<List<Symbol>> searchSymbols(String query, {int limit = 150}) {
     final select = _db.select(_db.symbols)
       ..where((s) => s.deletedAt.isNull());
     final q = query.trim();

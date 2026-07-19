@@ -165,6 +165,24 @@ flutter --no-version-check analyze
    analyzer bersih. Testing di device/simulator nyata + rilis
    bertanda tangan (signing) BELUM. (Selesai 2026-07-07)
 
+**Pasca-Fase 7 (2026-07-19):**
+- Diuji di iPad fisik pertama kali (Mac dev + Xcode 26.6, JDK 17,
+  iOS platform component 26.5). Fix: `ios/Podfile` sempat referensikan
+  target `RunnerTests` yang nggak ada di project (dihapus), gerbang
+  orang tua diganti dari `TextField` + keyboard sistem ke keypad angka
+  custom (keyboard on-screen iOS kadang nggak muncul lagi setelah
+  ditutup manual di iPad — bug dikenal Flutter, keypad custom
+  menghindarinya sepenuhnya).
+- Pustaka simbol Mulberry diperluas dari 38 → **98 simbol** (`lib/data/seed.dart`,
+  `assets/symbols/mulberry/`). 60 simbol baru (keluarga, kata kerja,
+  warna, konsep, kata tanya, waktu, tempat/benda, hewan, angka)
+  **hanya tersedia lewat pencarian di symbol picker** — sengaja TIDAK
+  dipasang ke papan bawaan manapun (papan utama/Makanan/Minuman tetap
+  seperti Fase 4). Sumber tetap Mulberry Symbols (CC BY-SA 2.0 UK,
+  `EN/` di repo `mulberrysymbols/mulberry-symbols`), di-preprocess
+  CSS-inline yang sama (banyak file source pakai `<style>` class rules
+  yang tidak didukung flutter_svg).
+
 ## TODO sisi user (tidak bisa dikerjakan Claude)
 
 - [x] Buat repo GitHub + push pertama.

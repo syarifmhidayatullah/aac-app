@@ -73,6 +73,85 @@ const _mulberrySymbols = <String, _SymbolSpec>{
   'orange_juice': _SymbolSpec('Jus', ['jus', 'jus jeruk'], 'orange_juice.svg'),
   'drink_cold': _SymbolSpec('Es teh', ['es teh', 'minuman dingin'], 'drink_cold.svg'),
   'hot_chocolate': _SymbolSpec('Cokelat', ['cokelat', 'cokelat panas'], 'hot_chocolate.svg'),
+
+  // Tambahan (belum dipasang ke papan manapun, tersedia lewat pencarian
+  // simbol di editor papan) — keluarga.
+  'mum': _SymbolSpec('Mama', ['mama', 'ibu', 'bunda'], 'mum_parent.svg'),
+  'dad': _SymbolSpec('Papa', ['papa', 'ayah', 'bapak'], 'dad_parent.svg'),
+  'baby': _SymbolSpec('Bayi', ['bayi', 'adik bayi'], 'baby.svg'),
+  'brother': _SymbolSpec('Saudara laki-laki', ['kakak laki-laki', 'adik laki-laki', 'saudara laki-laki'], 'brother.svg'),
+  'sister': _SymbolSpec('Saudara perempuan', ['kakak perempuan', 'adik perempuan', 'saudara perempuan'], 'sister.svg'),
+
+  // Kata kerja.
+  'go': _SymbolSpec('Pergi', ['pergi'], 'go_,_to.svg'),
+  'come': _SymbolSpec('Datang', ['datang', 'kesini'], 'come_,_to.svg'),
+  'close': _SymbolSpec('Tutup', ['tutup'], 'close_,_to.svg'),
+  'open': _SymbolSpec('Buka', ['buka'], 'open.svg'),
+  'look': _SymbolSpec('Lihat', ['lihat', 'liat'], 'look_,_to.svg'),
+  'hear': _SymbolSpec('Dengar', ['dengar', 'denger'], 'hear_,_to.svg'),
+  'give': _SymbolSpec('Kasih', ['kasih', 'berikan', 'kasih ke aku'], 'give_,_to.svg'),
+  'take': _SymbolSpec('Ambil', ['ambil'], 'take_,_to.svg'),
+  'put': _SymbolSpec('Taruh', ['taruh', 'taro'], 'put_,_to.svg'),
+  'sit': _SymbolSpec('Duduk', ['duduk'], 'sit_,_to.svg'),
+  'stand': _SymbolSpec('Berdiri', ['berdiri'], 'stand_,_to.svg'),
+  'walk': _SymbolSpec('Jalan', ['jalan', 'berjalan'], 'walk_,_to.svg'),
+  'run': _SymbolSpec('Lari', ['lari', 'berlari'], 'run_,_to.svg'),
+  'jump': _SymbolSpec('Lompat', ['lompat'], 'jump_,_to.svg'),
+  'wash_hands': _SymbolSpec('Cuci tangan', ['cuci tangan'], 'wash_hands_,_to.svg'),
+  'wait': _SymbolSpec('Tunggu', ['tunggu'], 'wait_,_to.svg'),
+
+  // Warna.
+  'red': _SymbolSpec('Merah', ['merah'], 'red.svg'),
+  'blue': _SymbolSpec('Biru', ['biru'], 'blue.svg'),
+  'green': _SymbolSpec('Hijau', ['hijau'], 'green.svg'),
+  'yellow': _SymbolSpec('Kuning', ['kuning'], 'yellow.svg'),
+  'black': _SymbolSpec('Hitam', ['hitam'], 'black.svg'),
+  'white': _SymbolSpec('Putih', ['putih'], 'white.svg'),
+
+  // Konsep / lawan kata.
+  'hot': _SymbolSpec('Panas', ['panas'], 'hot.svg'),
+  'up': _SymbolSpec('Atas', ['atas', 'naik'], 'up.svg'),
+  'down': _SymbolSpec('Bawah', ['bawah', 'turun'], 'down.svg'),
+  'in': _SymbolSpec('Dalam', ['dalam', 'masuk'], 'in.svg'),
+  'out': _SymbolSpec('Luar', ['luar', 'keluar'], 'out.svg'),
+  'on': _SymbolSpec('Nyala', ['nyala', 'hidupkan'], 'on.svg'),
+  'off': _SymbolSpec('Mati', ['mati', 'matikan'], 'off.svg'),
+  'same': _SymbolSpec('Sama', ['sama'], 'same.svg'),
+
+  // Kata tanya.
+  'where': _SymbolSpec('Dimana', ['dimana', 'di mana'], 'where.svg'),
+  'what': _SymbolSpec('Apa', ['apa'], 'what.svg'),
+  'who': _SymbolSpec('Siapa', ['siapa'], 'who.svg'),
+  'why': _SymbolSpec('Kenapa', ['kenapa', 'mengapa'], 'why.svg'),
+  'when': _SymbolSpec('Kapan', ['kapan'], 'when.svg'),
+  'how': _SymbolSpec('Bagaimana', ['bagaimana', 'gimana'], 'how.svg'),
+
+  // Waktu.
+  'now': _SymbolSpec('Sekarang', ['sekarang'], 'now.svg'),
+  'today': _SymbolSpec('Hari ini', ['hari ini'], 'today.svg'),
+  'tomorrow': _SymbolSpec('Besok', ['besok'], 'tomorrow.svg'),
+  'morning': _SymbolSpec('Pagi', ['pagi'], 'morning.svg'),
+  'afternoon': _SymbolSpec('Siang', ['siang'], 'afternoon.svg'),
+  'night': _SymbolSpec('Malam', ['malam'], 'night.svg'),
+
+  // Tempat & benda.
+  'school': _SymbolSpec('Sekolah', ['sekolah'], 'school.svg'),
+  'car': _SymbolSpec('Mobil', ['mobil'], 'car.svg'),
+  'ball': _SymbolSpec('Bola', ['bola'], 'ball.svg'),
+  'music': _SymbolSpec('Musik', ['musik', 'lagu'], 'music.svg'),
+  'computer': _SymbolSpec('Komputer', ['komputer', 'laptop'], 'computer_1.svg'),
+  'clock': _SymbolSpec('Jam', ['jam', 'waktu'], 'clock.svg'),
+
+  // Hewan.
+  'dog': _SymbolSpec('Anjing', ['anjing'], 'dog.svg'),
+  'cat': _SymbolSpec('Kucing', ['kucing'], 'cat.svg'),
+  'bird': _SymbolSpec('Burung', ['burung'], 'bird.svg'),
+  'cow': _SymbolSpec('Sapi', ['sapi'], 'cow.svg'),
+
+  // Angka.
+  'one': _SymbolSpec('Satu', ['satu', '1'], 'one.svg'),
+  'two': _SymbolSpec('Dua', ['dua', '2'], 'two.svg'),
+  'three': _SymbolSpec('Tiga', ['tiga', '3'], 'three.svg'),
 };
 
 String _encodeKeywords(List<String> keywords) =>
