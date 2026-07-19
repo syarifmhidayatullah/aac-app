@@ -35,8 +35,12 @@ sebelum lanjut ke fase berikutnya.
   (build pakai `backend/Dockerfile`, config di `backend/railway.json`).
 - Env wajib: `DB_HOST`, `JWT_SECRET`. Opsional: `DB_PORT` (default 5432),
   `DB_USER` (default postgres), `DB_PASSWORD`, `DB_NAME` (default postgres),
-  `DB_SSLMODE` (default require), `GOOGLE_CLIENT_IDS` (login Google),
-  `ALLOWED_ORIGINS`, `TOKEN_TTL`, `UPLOAD_DIR`.
+  `DB_SSLMODE` (default require), `GOOGLE_CLIENT_IDS` (login Google, dipisah
+  koma), `ALLOWED_ORIGINS`, `TOKEN_TTL`, `UPLOAD_DIR`, `RESEND_API_KEY`
+  (email verifikasi — kalau kosong, pengiriman email di-skip diam-diam,
+  registrasi tetap jalan tapi user nggak pernah dapat link verifikasi),
+  `EMAIL_FROM`, `APP_BASE_URL` (dipakai buat link di email verifikasi,
+  mis. `https://aac-app-production-2297.up.railway.app`).
 - Upload gambar tersimpan di filesystem — di Railway WAJIB mount
   **Volume** (mis. ke `/data`) dan set `UPLOAD_DIR=/data/uploads`,
   kalau tidak file hilang tiap deploy. (Supabase tidak punya volume
@@ -183,15 +187,46 @@ flutter --no-version-check analyze
   CSS-inline yang sama (banyak file source pakai `<style>` class rules
   yang tidak didukung flutter_svg).
 
+## Google Sign-In + verifikasi email (2026-07-19)
+
+- **Backend**: `POST /auth/google` (verifikasi ID token via
+  `google.golang.org/api/idtoken`, sudah ada sejak Fase 3) dan
+  verifikasi email (Resend, migration `0006_email_verification`)
+  SUDAH SELESAI di backend, sudah di-deploy. `RequireVerified`
+  cuma gate `/boards/{id}/share` + `/boards/import` (BUKAN `/sync` —
+  sync dipanggil otomatis tepat setelah register, kalau di-gate user
+  baru langsung gagal sync).
+- **Frontend**: tombol "Masuk dengan Google" (`google_sign_in` package)
+  + banner "email belum diverifikasi" + tombol kirim ulang sudah ada
+  di `account_screen.dart`. Status verifikasi di-refresh tiap layar
+  Account dibuka (`AccountState.refreshVerificationStatus`) karena
+  verifikasi terjadi di luar app (user klik link di email).
+- **BELUM BISA DIPAKAI** sampai TODO di bawah selesai — Google
+  Sign-In akan gagal (tidak ada Client ID terpasang), email verifikasi
+  akan silently skip (tidak ada RESEND_API_KEY).
+
 ## TODO sisi user (tidak bisa dikerjakan Claude)
 
 - [x] Buat repo GitHub + push pertama.
-- [ ] Railway: service repo (Root Directory = `backend`), env
-  `DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME/DB_SSLMODE` (dari
-  Supabase Session Pooler), `JWT_SECRET`, Volume di `/data` +
-  `UPLOAD_DIR=/data/uploads`.
-- [ ] Google Cloud Console: OAuth Client ID (iOS/Android/Web) →
-  env `GOOGLE_CLIENT_IDS` (dipisah koma) untuk login Google.
+- [x] Railway: service repo (Root Directory = `backend`), env DB dari
+  Supabase Session Pooler, `JWT_SECRET`, Volume di `/data` +
+  `UPLOAD_DIR=/data/uploads`. Live di
+  `aac-app-production-2297.up.railway.app`.
+- [ ] Resend: dapatkan `RESEND_API_KEY` + verifikasi domain pengirim →
+  set env `RESEND_API_KEY`, `EMAIL_FROM`, `APP_BASE_URL` di Railway.
+  Tanpa ini, email verifikasi tidak pernah terkirim (registrasi tetap
+  jalan, tapi user tidak bisa berbagi papan sampai ada cara lain untuk
+  verifikasi).
+- [ ] Google Cloud Console: buat OAuth Client ID (iOS + Android + Web,
+  satu project) →
+  - Backend: env `GOOGLE_CLIENT_IDS` di Railway (semua Client ID
+    dipisah koma — verifikasi ID token cek audience ke daftar ini).
+  - iOS: tambah `GIDClientID` (REVERSED_CLIENT_ID dari
+    `GoogleService-Info.plist`) + `CFBundleURLTypes` dengan URL scheme
+    reversed client ID itu ke `frontend/ios/Runner/Info.plist`.
+  - Android: taruh `google-services.json` di
+    `frontend/android/app/`, tambah Google Services Gradle plugin.
+  Tanpa ini, tombol "Masuk dengan Google" akan error saat ditekan.
 
 ## Catatan lingkungan dev
 

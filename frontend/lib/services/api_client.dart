@@ -21,11 +21,13 @@ class AuthResult {
     required this.token,
     required this.email,
     required this.displayName,
+    required this.isVerified,
   });
 
   final String token;
   final String email;
   final String displayName;
+  final bool isVerified;
 }
 
 /// Payload GET/POST /sync — baris mentah JSON (snake_case) per entitas.
@@ -113,6 +115,7 @@ class ApiClient {
       token: map['token'] as String,
       email: user['email'] as String,
       displayName: user['display_name'] as String? ?? '',
+      isVerified: user['is_verified'] as bool? ?? false,
     );
   }
 
@@ -133,6 +136,27 @@ class ApiClient {
         headers: _headers(),
         body: jsonEncode({'email': email, 'password': password}));
     return _authResult(_decode(res, 'Login'));
+  }
+
+  Future<AuthResult> loginWithGoogle(String idToken) async {
+    final res = await _client.post(_uri('/auth/google'),
+        headers: _headers(), body: jsonEncode({'id_token': idToken}));
+    return _authResult(_decode(res, 'Login Google'));
+  }
+
+  /// Minta email verifikasi dikirim ulang (butuh sudah login).
+  Future<void> resendVerification() async {
+    final res = await _client
+        .post(_uri('/auth/resend-verification'), headers: _headers());
+    _decode(res, 'Kirim ulang verifikasi');
+  }
+
+  /// Status verifikasi bisa berubah di luar app (user klik link di
+  /// email) — dipanggil ulang biar UI ikut ter-update.
+  Future<bool> fetchIsVerified() async {
+    final res = await _client.get(_uri('/me'), headers: _headers(json: false));
+    final body = _decode(res, 'Ambil profil') as Map<String, dynamic>;
+    return body['is_verified'] as bool? ?? false;
   }
 
   Future<SyncPayload> syncPull({DateTime? since}) async {

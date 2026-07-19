@@ -53,7 +53,11 @@ class FakeApi extends ApiClient {
   @override
   Future<AuthResult> login(String email, String password) async {
     if (failWith != null) throw failWith!;
-    return AuthResult(token: 'jwt-token', email: email, displayName: 'Budi');
+    return AuthResult(
+        token: 'jwt-token',
+        email: email,
+        displayName: 'Budi',
+        isVerified: true);
   }
 }
 

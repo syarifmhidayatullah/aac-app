@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/account_state.dart';
@@ -6,8 +7,21 @@ import '../../state/communication_state.dart';
 
 /// Layar akun & sinkronisasi (di balik parental gate): login/registrasi,
 /// status sync, sinkronisasi manual, impor papan dari kode, logout.
-class AccountScreen extends StatelessWidget {
+class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
+
+  @override
+  State<AccountScreen> createState() => _AccountScreenState();
+}
+
+class _AccountScreenState extends State<AccountScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Verifikasi terjadi di luar app (klik link email) — sinkronkan
+    // status lokal tiap kali layar akun dibuka.
+    context.read<AccountState>().refreshVerificationStatus();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,8 +62,10 @@ class _AuthFormState extends State<_AuthForm> {
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   late final TextEditingController _serverController;
+  final _googleSignIn = GoogleSignIn(scopes: ['email']);
   bool _register = false;
   bool _showServer = false;
+  bool _googleBusy = false;
 
   @override
   void initState() {
@@ -96,6 +112,38 @@ class _AuthFormState extends State<_AuthForm> {
       }
     } catch (_) {
       // Pesan error tampil dari account.lastError.
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    final account = context.read<AccountState>();
+    setState(() => _googleBusy = true);
+    try {
+      final googleAccount = await _googleSignIn.signIn();
+      if (googleAccount == null) return; // dibatalkan user
+      final googleAuth = await googleAccount.authentication;
+      final idToken = googleAuth.idToken;
+      if (idToken == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Gagal mengambil token dari Google.')));
+        }
+        return;
+      }
+
+      final newProfileId = await account.signInWithGoogle(idToken);
+      if (!mounted) return;
+      if (newProfileId != null) {
+        await context.read<CommunicationState>().switchProfile(newProfileId);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Berhasil masuk dengan Google.')));
+      }
+    } catch (_) {
+      // Pesan error tampil dari account.lastError.
+    } finally {
+      if (mounted) setState(() => _googleBusy = false);
     }
   }
 
@@ -168,6 +216,29 @@ class _AuthFormState extends State<_AuthForm> {
           child: Text(_register
               ? 'Sudah punya akun? Masuk'
               : 'Belum punya akun? Daftar'),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Expanded(child: Divider()),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text('atau', style: Theme.of(context).textTheme.bodySmall),
+            ),
+            const Expanded(child: Divider()),
+          ],
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed:
+              (account.busy || _googleBusy) ? null : _signInWithGoogle,
+          icon: _googleBusy
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.login),
+          label: const Text('Masuk dengan Google'),
         ),
         const Divider(height: 32),
         TextButton.icon(
@@ -259,6 +330,47 @@ class _AccountPanel extends StatelessWidget {
             subtitle: Text(account.email ?? ''),
           ),
         ),
+        if (!account.isVerified) ...[
+          const SizedBox(height: 8),
+          Card(
+            color: Theme.of(context).colorScheme.errorContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Email belum diverifikasi',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Cek inbox kamu untuk link verifikasi. Berbagi papan '
+                    'butuh email terverifikasi.',
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: account.busy
+                        ? null
+                        : () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            await account.resendVerification();
+                            if (account.lastError == null) {
+                              messenger.showSnackBar(const SnackBar(
+                                  content:
+                                      Text('Email verifikasi dikirim ulang.')));
+                            }
+                          },
+                    child: const Text('Kirim ulang email verifikasi'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 8),
         ListTile(
           leading: const Icon(Icons.sync),

@@ -40,6 +40,7 @@ class AccountState extends ChangeNotifier {
   String? _token;
   String? _email;
   String? _displayName;
+  bool _isVerified = false;
   DateTime? _lastSync;
   String? _activeProfileId;
   bool _busy = false;
@@ -49,6 +50,7 @@ class AccountState extends ChangeNotifier {
   bool get loggedIn => _token != null;
   String? get email => _email;
   String? get displayName => _displayName;
+  bool get isVerified => _isVerified;
   DateTime? get lastSync => _lastSync;
   String? get activeProfileId => _activeProfileId;
   bool get busy => _busy;
@@ -59,6 +61,7 @@ class AccountState extends ChangeNotifier {
     _token = _prefs.getString('token');
     _email = _prefs.getString('email');
     _displayName = _prefs.getString('displayName');
+    _isVerified = _prefs.getBool('isVerified') ?? false;
     _activeProfileId = _prefs.getString('activeProfileId');
     final ts = _prefs.getString('lastSync');
     _lastSync = ts == null ? null : DateTime.tryParse(ts);
@@ -105,13 +108,7 @@ class AccountState extends ChangeNotifier {
       final auth = register
           ? await api.register(email, password, displayName)
           : await api.login(email, password);
-      _token = auth.token;
-      _email = auth.email;
-      _displayName = auth.displayName;
-      api.token = auth.token;
-      await _prefs.setString('token', auth.token);
-      await _prefs.setString('email', auth.email);
-      await _prefs.setString('displayName', auth.displayName);
+      await _applyAuthResult(auth);
 
       final result = await _sync().firstSync();
       await _saveLastSync(result.serverTime);
@@ -127,16 +124,94 @@ class AccountState extends ChangeNotifier {
     }
   }
 
+  /// Login/daftar otomatis lewat Google Sign-In (ID token dari SDK
+  /// native Flutter, diverifikasi ulang di server).
+  Future<String?> signInWithGoogle(String idToken) async {
+    _busy = true;
+    _lastError = null;
+    notifyListeners();
+    try {
+      final auth = await _client().loginWithGoogle(idToken);
+      await _applyAuthResult(auth);
+
+      final result = await _sync().firstSync();
+      await _saveLastSync(result.serverTime);
+      final newProfile = result.newActiveProfileId;
+      if (newProfile != null) await setActiveProfile(newProfile);
+      return newProfile;
+    } catch (e) {
+      _lastError = friendlyError(e);
+      rethrow;
+    } finally {
+      _busy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _applyAuthResult(AuthResult auth) async {
+    _token = auth.token;
+    _email = auth.email;
+    _displayName = auth.displayName;
+    _isVerified = auth.isVerified;
+    _client().token = auth.token;
+    await _prefs.setString('token', auth.token);
+    await _prefs.setString('email', auth.email);
+    await _prefs.setString('displayName', auth.displayName);
+    await _prefs.setBool('isVerified', auth.isVerified);
+  }
+
+  /// Minta email verifikasi dikirim ulang.
+  Future<void> resendVerification() async {
+    if (!loggedIn || _busy) return;
+    _busy = true;
+    _lastError = null;
+    notifyListeners();
+    try {
+      await _client().resendVerification();
+    } catch (e) {
+      if (e is ApiException && e.code == 'already_verified') {
+        // Status lokal ketinggalan zaman — user ternyata sudah
+        // verifikasi (link di email diklik dari luar app).
+        _isVerified = true;
+        await _prefs.setBool('isVerified', true);
+      } else {
+        _lastError = friendlyError(e);
+      }
+    } finally {
+      _busy = false;
+      notifyListeners();
+    }
+  }
+
+  /// Verifikasi terjadi di luar app (klik link email) — panggil ini
+  /// pas layar akun dibuka biar status lokal ikut ter-update.
+  Future<void> refreshVerificationStatus() async {
+    if (!loggedIn || _isVerified) return;
+    try {
+      final verified = await _client().fetchIsVerified();
+      if (verified != _isVerified) {
+        _isVerified = verified;
+        await _prefs.setBool('isVerified', verified);
+        notifyListeners();
+      }
+    } catch (_) {
+      // Diam-diam gagal — bukan aksi eksplisit user, tidak perlu
+      // ganggu lastError.
+    }
+  }
+
   /// Logout hanya menghapus sesi — data lokal tetap ada (offline-first).
   Future<void> logout() async {
     _token = null;
     _email = null;
     _displayName = null;
+    _isVerified = false;
     _lastSync = null;
     _client().token = null;
     await _prefs.remove('token');
     await _prefs.remove('email');
     await _prefs.remove('displayName');
+    await _prefs.remove('isVerified');
     await _prefs.remove('lastSync');
     notifyListeners();
   }
@@ -193,6 +268,11 @@ class AccountState extends ChangeNotifier {
           return 'Tidak ditemukan — kode salah atau kedaluwarsa.';
         case 'invalid_input':
           return e.message;
+        case 'email_not_verified':
+          return 'Verifikasi email dulu sebelum berbagi papan — cek '
+              'inbox kamu, atau kirim ulang dari sini.';
+        case 'already_verified':
+          return 'Email kamu sudah terverifikasi.';
       }
       return e.message;
     }
