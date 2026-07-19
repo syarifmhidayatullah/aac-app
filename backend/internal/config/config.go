@@ -3,6 +3,8 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -24,13 +26,15 @@ type Config struct {
 func Load() (*Config, error) {
 	loadDotEnv()
 
+	dbHost := os.Getenv("DB_HOST")
+	if dbHost == "" {
+		return nil, errors.New("DB_HOST is required")
+	}
+
 	cfg := &Config{
 		Port:        getenv("PORT", "8080"),
-		DatabaseURL: os.Getenv("DATABASE_URL"),
+		DatabaseURL: buildDSN(dbHost),
 		UploadDir:   getenv("UPLOAD_DIR", "./uploads"),
-	}
-	if cfg.DatabaseURL == "" {
-		return nil, errors.New("DATABASE_URL is required")
 	}
 
 	secret := os.Getenv("JWT_SECRET")
@@ -48,6 +52,27 @@ func Load() (*Config, error) {
 	cfg.GoogleClientIDs = splitCSV(os.Getenv("GOOGLE_CLIENT_IDS"))
 	cfg.AllowedOrigins = splitCSV(getenv("ALLOWED_ORIGINS", "*"))
 	return cfg, nil
+}
+
+// buildDSN merakit DATABASE_URL (format postgres:// URL, dibutuhkan
+// golang-migrate) dari komponen DB_* terpisah.
+func buildDSN(host string) string {
+	port := getenv("DB_PORT", "5432")
+	user := getenv("DB_USER", "postgres")
+	password := os.Getenv("DB_PASSWORD")
+	name := getenv("DB_NAME", "postgres")
+	sslmode := getenv("DB_SSLMODE", "require")
+
+	u := &url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(user, password),
+		Host:   net.JoinHostPort(host, port),
+		Path:   "/" + name,
+	}
+	q := u.Query()
+	q.Set("sslmode", sslmode)
+	u.RawQuery = q.Encode()
+	return u.String()
 }
 
 func getenv(key, def string) string {

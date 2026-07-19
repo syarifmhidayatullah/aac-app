@@ -19,20 +19,29 @@ sebelum lanjut ke fase berikutnya.
 ## Deployment (Railway)
 
 - Push ke GitHub → Railway auto-deploy backend.
-- Database Postgres di-host di Railway; env `DATABASE_URL` diambil dari
-  service Postgres Railway (variable reference).
+- Database Postgres di-host di **Supabase** (bukan Railway Postgres);
+  config dibangun dari env `DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME/
+  DB_SSLMODE` terpisah (`internal/config/config.go` merakitnya jadi DSN
+  `postgres://...`), bukan satu `DATABASE_URL` utuh.
+  **Pakai Session Pooler Supabase** (`aws-0-<region>.pooler.supabase.com`,
+  port `5432`, user `postgres.<project-ref>`) — BUKAN Direct connection
+  (`db.<ref>.supabase.co`, IPv6-only, `network is unreachable` dari
+  Railway) dan BUKAN Transaction pooler (port `6543`, tidak mendukung
+  advisory lock yang dipakai `golang-migrate`).
 - **Migrasi otomatis**: server menjalankan semua migrasi pending
   (golang-migrate, embedded via `embed.FS`) saat startup, sebelum listen.
   Jadi DDL baru cukup ditambahkan sebagai file migrasi → push → tereksekusi.
 - Service Railway harus di-set **Root Directory = `backend/`**
   (build pakai `backend/Dockerfile`, config di `backend/railway.json`).
-- Env wajib: `DATABASE_URL`, `JWT_SECRET`. Opsional: `GOOGLE_CLIENT_IDS`
-  (login Google), `ALLOWED_ORIGINS`, `TOKEN_TTL`, `UPLOAD_DIR`.
+- Env wajib: `DB_HOST`, `JWT_SECRET`. Opsional: `DB_PORT` (default 5432),
+  `DB_USER` (default postgres), `DB_PASSWORD`, `DB_NAME` (default postgres),
+  `DB_SSLMODE` (default require), `GOOGLE_CLIENT_IDS` (login Google),
+  `ALLOWED_ORIGINS`, `TOKEN_TTL`, `UPLOAD_DIR`.
 - Upload gambar tersimpan di filesystem — di Railway WAJIB mount
   **Volume** (mis. ke `/data`) dan set `UPLOAD_DIR=/data/uploads`,
-  kalau tidak file hilang tiap deploy.
-- Jika koneksi internal Railway menolak SSL, tambahkan `?sslmode=disable`
-  ke `DATABASE_URL`.
+  kalau tidak file hilang tiap deploy. (Supabase tidak punya volume
+  setara — hanya object storage terpisah, butuh ubah kode kalau mau
+  dipakai.)
 
 ## Konvensi
 
@@ -158,10 +167,11 @@ flutter --no-version-check analyze
 
 ## TODO sisi user (tidak bisa dikerjakan Claude)
 
-- [ ] Buat repo GitHub + push pertama (commit belum pernah dibuat).
-- [ ] Railway: project + service Postgres + service repo (Root Directory
-  = `backend`), env `DATABASE_URL` (reference), `JWT_SECRET`,
-  Volume di `/data` + `UPLOAD_DIR=/data/uploads`.
+- [x] Buat repo GitHub + push pertama.
+- [ ] Railway: service repo (Root Directory = `backend`), env
+  `DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME/DB_SSLMODE` (dari
+  Supabase Session Pooler), `JWT_SECRET`, Volume di `/data` +
+  `UPLOAD_DIR=/data/uploads`.
 - [ ] Google Cloud Console: OAuth Client ID (iOS/Android/Web) →
   env `GOOGLE_CLIENT_IDS` (dipisah koma) untuk login Google.
 
