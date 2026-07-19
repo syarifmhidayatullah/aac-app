@@ -63,6 +63,16 @@ type Cell struct {
 	DeletedAt       *time.Time `json:"deleted_at,omitempty"`
 }
 
+// BoardShare adalah kode singkat untuk berbagi papan antar akun.
+// Impor menyalin papan, jadi share aman dihapus/kedaluwarsa kapan pun.
+type BoardShare struct {
+	Code      string    `json:"code"`
+	BoardID   uuid.UUID `json:"board_id"`
+	CreatedBy uuid.UUID `json:"-"`
+	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
 type Symbol struct {
 	ID          uuid.UUID  `json:"id"`
 	OwnerUserID *uuid.UUID `json:"owner_user_id,omitempty"`

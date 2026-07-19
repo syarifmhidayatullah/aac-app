@@ -263,4 +263,79 @@ func TestAPI(t *testing.T) {
 		}},
 	})
 	mustStatus(status, http.StatusForbidden, "sync push into other user's profile")
+
+	// --- Berbagi papan antar akun ---
+	// Budi menautkan simbol custom + sel navigate, supaya impor teruji
+	// menyalin simbol dan melepas target navigasi.
+	symbolID := uuid.NewString()
+	status, _ = call("POST", "/api/v1/sync", token, map[string]any{
+		"symbols": []map[string]any{{
+			"id": symbolID, "pack": "custom", "label": "Foto Halo",
+			"keywords": []string{"halo"}, "image_url": up.URL,
+		}},
+	})
+	mustStatus(status, http.StatusOK, "push custom symbol")
+
+	status, _ = call("PUT", "/api/v1/boards/"+boardID+"/cells", token, map[string]any{
+		"cells": []map[string]any{
+			{"row_index": 0, "col_index": 0, "label": "Halo", "symbol_id": symbolID},
+			{"row_index": 0, "col_index": 1, "label": "Dadah",
+				"action_type": "navigate", "target_board_id": newBoardID},
+		},
+	})
+	mustStatus(status, http.StatusOK, "set cells with symbol + navigate")
+
+	status, res = call("POST", "/api/v1/boards/"+boardID+"/share", token, nil)
+	mustStatus(status, http.StatusCreated, "create share code")
+	code := obj(res)["code"].(string)
+	if len(code) != 8 {
+		t.Fatalf("share code = %q, want 8 chars", code)
+	}
+
+	// Tidak bisa membuat kode untuk papan orang lain.
+	status, _ = call("POST", "/api/v1/boards/"+boardID+"/share", intruderToken, nil)
+	mustStatus(status, http.StatusNotFound, "share other user's board")
+
+	status, res = call("POST", "/api/v1/profiles", intruderToken, map[string]any{"name": "Anak"})
+	mustStatus(status, http.StatusCreated, "second user's profile")
+	intruderProfileID := obj(res)["id"].(string)
+
+	status, res = call("POST", "/api/v1/boards/import", intruderToken, map[string]any{
+		"code": code, "profile_id": intruderProfileID,
+	})
+	mustStatus(status, http.StatusCreated, "import shared board")
+	imported := obj(res)
+	if imported["id"] == boardID {
+		t.Fatal("import must copy the board, not reference it")
+	}
+	if imported["is_root"] != false {
+		t.Fatal("imported board must not be root")
+	}
+	importedCells := imported["cells"].([]any)
+	if len(importedCells) != 2 {
+		t.Fatalf("imported cells = %d, want 2", len(importedCells))
+	}
+	for _, c := range importedCells {
+		cm := obj(c)
+		if cm["target_board_id"] != nil {
+			t.Fatal("imported navigate cell must lose its target")
+		}
+		if cm["label"] == "Halo" {
+			sid, _ := cm["symbol_id"].(string)
+			if sid == "" || sid == symbolID {
+				t.Fatalf("imported symbol must be a copy, got %v", cm["symbol_id"])
+			}
+		}
+	}
+
+	// Impor ke profile orang lain harus ditolak.
+	status, _ = call("POST", "/api/v1/boards/import", intruderToken, map[string]any{
+		"code": code, "profile_id": profileID,
+	})
+	mustStatus(status, http.StatusNotFound, "import into other user's profile")
+
+	status, _ = call("POST", "/api/v1/boards/import", intruderToken, map[string]any{
+		"code": "XXXXXXXX", "profile_id": intruderProfileID,
+	})
+	mustStatus(status, http.StatusNotFound, "import with unknown code")
 }

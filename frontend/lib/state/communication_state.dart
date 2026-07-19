@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 import '../data/board_repository.dart';
@@ -17,25 +19,67 @@ class CommunicationState extends ChangeNotifier {
 
   final BoardRepository _repository;
   final SpeechService _speech;
-  final String _profileId;
+  String _profileId;
 
   final List<BoardWithCells> _stack = [];
   final List<Cell> _sentence = [];
   bool _loading = true;
 
   bool get loading => _loading;
+  String get profileId => _profileId;
   BoardWithCells? get current => _stack.isEmpty ? null : _stack.last;
   bool get canGoBack => _stack.length > 1;
   List<Cell> get sentence => List.unmodifiable(_sentence);
 
+  /// Pindah profile aktif (mis. setelah login mengganti data lokal
+  /// dengan data server) dan mulai lagi dari papan utamanya.
+  Future<void> switchProfile(String profileId) async {
+    _profileId = profileId;
+    _sentence.clear();
+    await loadRoot();
+  }
+
   Future<void> loadRoot() async {
     _loading = true;
     notifyListeners();
+    await applySpeechSettings();
     final root = await _repository.getRootBoard(_profileId);
     _stack
       ..clear()
       ..add(root);
     _loading = false;
+    notifyListeners();
+  }
+
+  /// Terapkan pengaturan suara dari settings profile ke engine TTS.
+  Future<void> applySpeechSettings() async {
+    try {
+      final profile = await _repository.getProfile(_profileId);
+      final settings =
+          (jsonDecode(profile.settings) as Map<String, dynamic>?) ?? {};
+      await _speech.configure(
+        rate: (settings['tts_rate'] as num?)?.toDouble(),
+        pitch: (settings['tts_pitch'] as num?)?.toDouble(),
+      );
+    } catch (_) {
+      // Pengaturan suara tidak boleh menggagalkan pemuatan papan.
+    }
+  }
+
+  /// Muat ulang seluruh stack dari DB (dipanggil setelah mode edit
+  /// ditutup) sambil mempertahankan posisi navigasi sebisanya.
+  Future<void> reload() async {
+    if (_stack.isEmpty) return loadRoot();
+    final ids = _stack.map((b) => b.board.id).toList();
+    final root = await _repository.getRootBoard(_profileId);
+    _stack
+      ..clear()
+      ..add(root);
+    for (final id in ids.skip(1)) {
+      final board = await _repository.getBoard(id);
+      if (board == null) break;
+      _stack.add(board);
+    }
     notifyListeners();
   }
 

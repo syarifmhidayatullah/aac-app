@@ -5,21 +5,37 @@ import 'package:flutter_tts/flutter_tts.dart';
 abstract class SpeechService {
   Future<void> speak(String text);
   Future<void> stop();
+
+  /// Atur kecepatan (0.1–1.0, default 0.5) dan pitch (0.5–2.0,
+  /// default 1.0). Dipanggil saat profile dimuat & saat pengaturan
+  /// suara diubah.
+  Future<void> configure({double? rate, double? pitch});
 }
 
 class FlutterTtsSpeechService implements SpeechService {
-  FlutterTtsSpeechService({this.language = 'id-ID', this.rate = 0.5});
+  FlutterTtsSpeechService({this.language = 'id-ID'});
 
   final String language;
-  final double rate;
   final FlutterTts _tts = FlutterTts();
   bool _initialized = false;
+  double _rate = 0.5;
+  double _pitch = 1.0;
 
   Future<void> _ensureInitialized() async {
     if (_initialized) return;
     await _tts.setLanguage(language);
-    await _tts.setSpeechRate(rate);
+    await _tts.setSpeechRate(_rate);
+    await _tts.setPitch(_pitch);
     _initialized = true;
+  }
+
+  @override
+  Future<void> configure({double? rate, double? pitch}) async {
+    if (rate != null) _rate = rate.clamp(0.1, 1.0);
+    if (pitch != null) _pitch = pitch.clamp(0.5, 2.0);
+    if (!_initialized) return; // dipakai saat init pertama
+    await _tts.setSpeechRate(_rate);
+    await _tts.setPitch(_pitch);
   }
 
   @override

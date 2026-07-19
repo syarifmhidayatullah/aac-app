@@ -9,25 +9,36 @@ import 'package:aac_app/state/communication_state.dart';
 
 class FakeSpeech implements SpeechService {
   final List<String> spoken = [];
+  double? rate;
+  double? pitch;
 
   @override
   Future<void> speak(String text) async => spoken.add(text);
 
   @override
   Future<void> stop() async {}
+
+  @override
+  Future<void> configure({double? rate, double? pitch}) async {
+    if (rate != null) this.rate = rate;
+    if (pitch != null) this.pitch = pitch;
+  }
 }
 
 void main() {
   late AppDatabase db;
+  late String profileId;
+  late BoardRepository repository;
   late FakeSpeech speech;
   late CommunicationState state;
 
   setUp(() async {
     db = AppDatabase.withExecutor(NativeDatabase.memory());
-    final profileId = await seedIfEmpty(db);
+    profileId = await seedIfEmpty(db);
+    repository = BoardRepository(db);
     speech = FakeSpeech();
     state = CommunicationState(
-      repository: BoardRepository(db),
+      repository: repository,
       speech: speech,
       profileId: profileId,
     );
@@ -88,6 +99,19 @@ void main() {
     expect(state.sentence.length, 1);
     state.clearSentence();
     expect(state.sentence, isEmpty);
+  });
+
+  test('pengaturan suara profile diterapkan ke TTS saat load', () async {
+    await repository.updateProfileSettings(
+        profileId, {'tts_rate': 0.8, 'tts_pitch': 1.5});
+
+    await state.loadRoot();
+
+    expect(speech.rate, 0.8);
+    expect(speech.pitch, 1.5);
+    // Ikut sync: profile jadi dirty.
+    final profile = await repository.getProfile(profileId);
+    expect(profile.dirty, isTrue);
   });
 
   test('tap sel navigasi membuka papan tujuan, back kembali', () async {

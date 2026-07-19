@@ -33,4 +33,6 @@ dan tetap berfungsi penuh tanpa internet (termasuk TTS via engine
 native). Backend dipakai untuk akun, sinkronisasi antar perangkat,
 berbagi papan, dan penyimpanan gambar custom.
 
-Pustaka simbol: [ARASAAC](https://arasaac.org) (lisensi CC BY-NC-SA).
+Pustaka simbol: [Mulberry Symbols](https://mulberrysymbols.org)
+(lisensi CC BY-SA 2.0 UK — atribusi:
+`frontend/assets/symbols/mulberry/ATTRIBUTION.md`).

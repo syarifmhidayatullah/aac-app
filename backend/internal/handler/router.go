@@ -28,6 +28,7 @@ func NewRouter(d Deps) http.Handler {
 	sh := &symbolHandler{repo: d.Repo}
 	uh := &uploadHandler{dir: d.UploadDir}
 	yh := &syncHandler{repo: d.Repo}
+	rh := &shareHandler{repo: d.Repo}
 
 	r := chi.NewRouter()
 	r.Use(chimw.RequestID)
@@ -71,6 +72,9 @@ func NewRouter(d Deps) http.Handler {
 			r.Put("/boards/{boardID}", bh.update)
 			r.Put("/boards/{boardID}/cells", bh.replaceCells)
 			r.Delete("/boards/{boardID}", bh.delete)
+
+			r.Post("/boards/{boardID}/share", rh.create)
+			r.Post("/boards/import", rh.importBoard)
 
 			r.Get("/symbols", sh.list)
 			r.Post("/symbols", sh.create)

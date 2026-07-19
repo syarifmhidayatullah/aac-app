@@ -16,17 +16,83 @@ const colorFolder = '#B0BEC5'; // abu: navigasi ke papan lain
 const _uuid = Uuid();
 
 class _CellSpec {
-  const _CellSpec(this.label, this.color, {this.navigateTo});
+  const _CellSpec(this.label, this.color, {this.navigateTo, this.symbol});
   final String label;
   final String color;
   final String? navigateTo; // nama papan tujuan (di-resolve saat seeding)
+  final String? symbol; // nama file (tanpa .svg) di pustaka Mulberry
 }
 
-/// Mengisi database dengan profile default + papan kosakata inti
-/// Bahasa Indonesia kalau masih kosong. Mengembalikan id profile aktif.
+class _SymbolSpec {
+  const _SymbolSpec(this.label, this.keywords, this.packRef);
+  final String label;
+  final List<String> keywords;
+  final String packRef; // nama file asli di repo mulberry-symbols/EN
+}
+
+const _mulberryLicense = 'CC BY-SA 2.0 UK';
+
+/// Pustaka simbol bawaan: subset Mulberry Symbols dengan label &
+/// keyword Bahasa Indonesia (file: assets/symbols/mulberry/<key>.svg).
+const _mulberrySymbols = <String, _SymbolSpec>{
+  'i': _SymbolSpec('Aku', ['aku', 'saya'], 'I.svg'),
+  'want': _SymbolSpec('Mau', ['mau', 'ingin'], 'want_,_to.svg'),
+  'good': _SymbolSpec('Suka', ['suka', 'bagus', 'baik'], 'good.svg'),
+  'bad': _SymbolSpec('Tidak suka', ['tidak suka', 'jelek'], 'bad.svg'),
+  'eat': _SymbolSpec('Makan', ['makan'], 'eat_,_to.svg'),
+  'drink': _SymbolSpec('Minum', ['minum'], 'drink_,_to.svg'),
+  'play': _SymbolSpec('Main', ['main', 'bermain'], 'play_,_to.svg'),
+  'sleep': _SymbolSpec('Tidur', ['tidur'], 'sleep_male_,_to.svg'),
+  'toilet': _SymbolSpec('Toilet', ['toilet', 'wc', 'kamar mandi'], 'toilet.svg'),
+  'help': _SymbolSpec('Tolong', ['tolong', 'bantu'], 'help_,_to.svg'),
+  'more': _SymbolSpec('Lagi', ['lagi', 'tambah'], 'more.svg'),
+  'finish': _SymbolSpec('Sudah', ['sudah', 'selesai'], 'finish.svg'),
+  'yes': _SymbolSpec('Ya', ['ya', 'iya', 'setuju'], 'nod_,_to.svg'),
+  'no': _SymbolSpec('Tidak', ['tidak', 'bukan'], 'cross.svg'),
+  'sick': _SymbolSpec('Sakit', ['sakit', 'pusing'], 'headache.svg'),
+  'happy': _SymbolSpec('Senang', ['senang', 'bahagia', 'gembira'], 'happy_man.svg'),
+  'sad': _SymbolSpec('Sedih', ['sedih'], 'sad_man.svg'),
+  'angry': _SymbolSpec('Marah', ['marah'], 'angry_man.svg'),
+  'afraid': _SymbolSpec('Takut', ['takut'], 'afraid_man.svg'),
+  'hello': _SymbolSpec('Halo', ['halo', 'hai'], 'hello.svg'),
+  'rice': _SymbolSpec('Nasi', ['nasi'], 'rice.svg'),
+  'bread': _SymbolSpec('Roti', ['roti'], 'bread.svg'),
+  'porridge': _SymbolSpec('Bubur', ['bubur'], 'porridge.svg'),
+  'egg': _SymbolSpec('Telur', ['telur'], 'egg.svg'),
+  'chicken': _SymbolSpec('Ayam', ['ayam'], 'chicken.svg'),
+  'fish': _SymbolSpec('Ikan', ['ikan'], 'fish.svg'),
+  'vegetables': _SymbolSpec('Sayur', ['sayur', 'sayuran'], 'vegetables.svg'),
+  'fruit': _SymbolSpec('Buah', ['buah'], 'fruit.svg'),
+  'banana': _SymbolSpec('Pisang', ['pisang'], 'banana.svg'),
+  'apple': _SymbolSpec('Apel', ['apel'], 'apple.svg'),
+  'cake': _SymbolSpec('Kue', ['kue'], 'cake.svg'),
+  'ice_cream': _SymbolSpec('Es krim', ['es krim'], 'ice_cream.svg'),
+  'water': _SymbolSpec('Air putih', ['air', 'air putih'], 'water.svg'),
+  'milk': _SymbolSpec('Susu', ['susu'], 'milk.svg'),
+  'tea': _SymbolSpec('Teh', ['teh'], 'tea.svg'),
+  'orange_juice': _SymbolSpec('Jus', ['jus', 'jus jeruk'], 'orange_juice.svg'),
+  'drink_cold': _SymbolSpec('Es teh', ['es teh', 'minuman dingin'], 'drink_cold.svg'),
+  'hot_chocolate': _SymbolSpec('Cokelat', ['cokelat', 'cokelat panas'], 'hot_chocolate.svg'),
+};
+
+String _encodeKeywords(List<String> keywords) =>
+    '[${keywords.map((k) => '"$k"').join(',')}]';
+
+/// Id simbol Mulberry deterministik (UUID v5) — perangkat mana pun
+/// menghasilkan id yang sama, sehingga push sync tidak membuat
+/// duplikat di server.
+String mulberrySymbolId(String key) =>
+    _uuid.v5(Namespace.url.value, 'https://aac-app/symbols/mulberry/$key');
+
+/// Mengisi database dengan profile default, pustaka simbol Mulberry,
+/// dan papan kosakata inti Bahasa Indonesia kalau masih kosong.
+/// Mengembalikan id profile aktif.
 Future<String> seedIfEmpty(AppDatabase db) async {
-  final existing = await db.select(db.profiles).getSingleOrNull();
-  if (existing != null) return existing.id;
+  final existing = await (db.select(db.profiles)
+        ..where((p) => p.deletedAt.isNull())
+        ..limit(1))
+      .get();
+  if (existing.isNotEmpty) return existing.first.id;
 
   final profileId = _uuid.v4();
 
@@ -42,35 +108,35 @@ Future<String> seedIfEmpty(AppDatabase db) async {
       isRoot: true,
       grid: [
         [
-          const _CellSpec('Aku', colorPronoun),
+          const _CellSpec('Aku', colorPronoun, symbol: 'i'),
           const _CellSpec('Kamu', colorPronoun),
-          const _CellSpec('Mau', colorVerb),
+          const _CellSpec('Mau', colorVerb, symbol: 'want'),
           const _CellSpec('Tidak mau', colorNegation),
-          const _CellSpec('Suka', colorVerb),
-          const _CellSpec('Tidak suka', colorNegation),
+          const _CellSpec('Suka', colorVerb, symbol: 'good'),
+          const _CellSpec('Tidak suka', colorNegation, symbol: 'bad'),
         ],
         [
-          const _CellSpec('Makan', colorVerb),
-          const _CellSpec('Minum', colorVerb),
-          const _CellSpec('Main', colorVerb),
-          const _CellSpec('Tidur', colorVerb),
-          const _CellSpec('Toilet', colorNoun),
-          const _CellSpec('Tolong', colorSocial),
+          const _CellSpec('Makan', colorVerb, symbol: 'eat'),
+          const _CellSpec('Minum', colorVerb, symbol: 'drink'),
+          const _CellSpec('Main', colorVerb, symbol: 'play'),
+          const _CellSpec('Tidur', colorVerb, symbol: 'sleep'),
+          const _CellSpec('Toilet', colorNoun, symbol: 'toilet'),
+          const _CellSpec('Tolong', colorSocial, symbol: 'help'),
         ],
         [
-          const _CellSpec('Lagi', colorDescriptor),
-          const _CellSpec('Sudah', colorDescriptor),
-          const _CellSpec('Ya', colorSocial),
-          const _CellSpec('Tidak', colorNegation),
-          const _CellSpec('Sakit', colorDescriptor),
+          const _CellSpec('Lagi', colorDescriptor, symbol: 'more'),
+          const _CellSpec('Sudah', colorDescriptor, symbol: 'finish'),
+          const _CellSpec('Ya', colorSocial, symbol: 'yes'),
+          const _CellSpec('Tidak', colorNegation, symbol: 'no'),
+          const _CellSpec('Sakit', colorDescriptor, symbol: 'sick'),
           const _CellSpec('Capek', colorDescriptor),
         ],
         [
-          const _CellSpec('Senang', colorDescriptor),
-          const _CellSpec('Sedih', colorDescriptor),
-          const _CellSpec('Marah', colorDescriptor),
-          const _CellSpec('Takut', colorDescriptor),
-          const _CellSpec('Halo', colorSocial),
+          const _CellSpec('Senang', colorDescriptor, symbol: 'happy'),
+          const _CellSpec('Sedih', colorDescriptor, symbol: 'sad'),
+          const _CellSpec('Marah', colorDescriptor, symbol: 'angry'),
+          const _CellSpec('Takut', colorDescriptor, symbol: 'afraid'),
+          const _CellSpec('Halo', colorSocial, symbol: 'hello'),
           const _CellSpec('Terima kasih', colorSocial),
         ],
         [
@@ -86,22 +152,22 @@ Future<String> seedIfEmpty(AppDatabase db) async {
       isRoot: false,
       grid: [
         [
-          const _CellSpec('Nasi', colorNoun),
-          const _CellSpec('Roti', colorNoun),
-          const _CellSpec('Bubur', colorNoun),
-          const _CellSpec('Telur', colorNoun),
+          const _CellSpec('Nasi', colorNoun, symbol: 'rice'),
+          const _CellSpec('Roti', colorNoun, symbol: 'bread'),
+          const _CellSpec('Bubur', colorNoun, symbol: 'porridge'),
+          const _CellSpec('Telur', colorNoun, symbol: 'egg'),
         ],
         [
-          const _CellSpec('Ayam', colorNoun),
-          const _CellSpec('Ikan', colorNoun),
-          const _CellSpec('Sayur', colorNoun),
-          const _CellSpec('Buah', colorNoun),
+          const _CellSpec('Ayam', colorNoun, symbol: 'chicken'),
+          const _CellSpec('Ikan', colorNoun, symbol: 'fish'),
+          const _CellSpec('Sayur', colorNoun, symbol: 'vegetables'),
+          const _CellSpec('Buah', colorNoun, symbol: 'fruit'),
         ],
         [
-          const _CellSpec('Pisang', colorNoun),
-          const _CellSpec('Apel', colorNoun),
-          const _CellSpec('Kue', colorNoun),
-          const _CellSpec('Es krim', colorNoun),
+          const _CellSpec('Pisang', colorNoun, symbol: 'banana'),
+          const _CellSpec('Apel', colorNoun, symbol: 'apple'),
+          const _CellSpec('Kue', colorNoun, symbol: 'cake'),
+          const _CellSpec('Es krim', colorNoun, symbol: 'ice_cream'),
         ],
       ],
     ),
@@ -112,14 +178,14 @@ Future<String> seedIfEmpty(AppDatabase db) async {
       isRoot: false,
       grid: [
         [
-          const _CellSpec('Air putih', colorNoun),
-          const _CellSpec('Susu', colorNoun),
-          const _CellSpec('Teh', colorNoun),
-          const _CellSpec('Jus', colorNoun),
+          const _CellSpec('Air putih', colorNoun, symbol: 'water'),
+          const _CellSpec('Susu', colorNoun, symbol: 'milk'),
+          const _CellSpec('Teh', colorNoun, symbol: 'tea'),
+          const _CellSpec('Jus', colorNoun, symbol: 'orange_juice'),
         ],
         [
-          const _CellSpec('Es teh', colorNoun),
-          const _CellSpec('Cokelat', colorNoun),
+          const _CellSpec('Es teh', colorNoun, symbol: 'drink_cold'),
+          const _CellSpec('Cokelat', colorNoun, symbol: 'hot_chocolate'),
         ],
       ],
     ),
@@ -133,6 +199,23 @@ Future<String> seedIfEmpty(AppDatabase db) async {
     await db.into(db.profiles).insert(
           ProfilesCompanion.insert(id: profileId, name: 'Profil Utama'),
         );
+
+    // Pustaka simbol Mulberry bawaan.
+    final symbolIdByKey = <String, String>{};
+    for (final entry in _mulberrySymbols.entries) {
+      final id = mulberrySymbolId(entry.key);
+      symbolIdByKey[entry.key] = id;
+      final spec = entry.value;
+      await db.into(db.symbols).insert(SymbolsCompanion.insert(
+            id: id,
+            pack: const Value('mulberry'),
+            packRef: Value(spec.packRef),
+            label: spec.label,
+            keywords: Value(_encodeKeywords(spec.keywords)),
+            imageUrl: Value('assets/symbols/mulberry/${entry.key}.svg'),
+            license: const Value(_mulberryLicense),
+          ));
+    }
 
     for (final entry in boards.entries) {
       final b = entry.value;
@@ -156,6 +239,9 @@ Future<String> seedIfEmpty(AppDatabase db) async {
                 colIndex: c,
                 label: spec.label,
                 backgroundColor: Value(spec.color),
+                symbolId: Value(
+                  spec.symbol == null ? null : symbolIdByKey[spec.symbol],
+                ),
                 actionType: Value(isNavigate ? 'navigate' : 'speak'),
                 targetBoardId: Value(
                   isNavigate ? boardIdByName[spec.navigateTo] : null,

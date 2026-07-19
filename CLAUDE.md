@@ -94,12 +94,67 @@ flutter --no-version-check analyze
    3.7.7 → 3.44.5. BELUM diuji di device/simulator nyata (suara TTS
    & rasa UI perlu dicoba manual di iPad/simulator).
    (Selesai 2026-07-07)
-5. ⬜ **Editor papan** — mode edit caregiver: tambah/ubah sel, pilih
-   simbol dari pustaka/foto sendiri, atur ukuran grid, parental gate.
-6. ⬜ **Sync & akun** — login di Flutter, sinkronisasi dua arah,
-   berbagi papan antar akun.
-7. ⬜ **Polish** — layout iPad landscape, aksesibilitas (tap target,
-   kontras), pengaturan suara/kecepatan TTS, build web & Android, testing.
+5. ✅ **Editor papan** — parental gate (soal perkalian,
+   `lib/ui/widgets/parental_gate.dart`) dari ikon pensil di layar
+   komunikasi → `BoardEditorScreen` (`lib/ui/editor/`): grid dengan
+   slot kosong "+", tap sel → `cell_editor_sheet.dart` (label, teks
+   ucapan, 8 warna Fitzgerald, aksi ucapkan/buka papan + buat papan
+   baru, hapus sel = soft delete), pengaturan papan (nama + grid
+   maks 8x10; sel di luar grid disembunyikan, tidak dihapus), dropdown
+   pindah papan. Pemilih simbol (`symbol_picker.dart`): cari pustaka
+   lokal + foto kamera/galeri (image_picker; izin di Info.plist;
+   `ImageStore`: file di documents/images dengan path RELATIF di DB,
+   data URI base64 di web). Pustaka bawaan: 38 SVG **Mulberry**
+   di-bundle (`assets/symbols/mulberry/` + ATTRIBUTION.md, CC BY-SA
+   2.0 UK) di-seed dengan label/keyword Indonesia + tertaut ke sel
+   seed; render via flutter_svg (`SymbolImage` menangani assets/,
+   data:, http, path relatif). BoardRepository dapat operasi tulis
+   (upsert/delete cell, create/update board, search/create symbol) —
+   semua set `dirty` + `updatedAt` untuk sync Fase 6. 15 unit test
+   pass, analyzer bersih, build web sukses. BELUM diuji di
+   device/simulator nyata. (Selesai 2026-07-07)
+6. ✅ **Sync & akun** — Backend: berbagi papan via kode 8-char
+   (migrasi `0004_board_shares`, `POST /boards/{id}/share` → kode
+   berlaku 7 hari, `POST /boards/import` {code, profile_id} MENYALIN
+   board+cells, simbol milik pembagi ikut disalin ke pengimpor,
+   target navigasi di-strip). Flutter: `ApiClient`
+   (`lib/services/api_client.dart`; base URL dari `--dart-define
+   AAC_API_URL` / bisa diubah di UI), `SyncService`
+   (`lib/services/sync_service.dart`): first-sync = server ada data →
+   REPLACE lokal (ganti profile aktif), server kosong → push seluruh
+   seed; sync rutin = upload foto custom (imageUrl lokal ditukar URL
+   server) → push baris dirty → mark clean → pull since → apply
+   (tombstone ikut). Id simbol Mulberry = UUID v5 deterministik
+   (`mulberrySymbolId`) supaya tidak duplikat antar perangkat.
+   `AccountState` (`lib/state/account_state.dart`, sesi di
+   shared_preferences; logout mempertahankan data lokal) +
+   `AccountScreen` di balik parental gate (ikon profil): login/daftar,
+   sinkronkan sekarang, impor papan dengan kode, logout. Tombol
+   bagikan (ios_share) di editor: sync dulu lalu tampilkan kode.
+   Go test pass (incl. share/import), 23 unit test Flutter pass,
+   analyzer bersih, build web sukses. BELUM diuji end-to-end lawan
+   server sungguhan dari app (perlu Railway/lokal + 2 device).
+   (Selesai 2026-07-07)
+7. ✅ **Polish** — Grid papan responsif (`BoardGridLayout`,
+   `lib/ui/widgets/board_grid.dart`): rasio sel dihitung dari layar,
+   papan mengisi penuh tanpa scroll (portrait & landscape iPad),
+   dipakai layar komunikasi + editor. Aksesibilitas: MergeSemantics di
+   CellTile + semanticLabel folder. Pengaturan suara TTS per profile
+   (kecepatan + pitch, slider + tombol coba,
+   `lib/ui/editor/voice_settings_dialog.dart` dari appbar editor),
+   tersimpan di `profiles.settings` JSON (`tts_rate`/`tts_pitch`,
+   dirty → ikut sync), diterapkan saat load
+   (`CommunicationState.applySpeechSettings`);
+   `SpeechService.configure(rate, pitch)`. SVG Mulberry di-preprocess:
+   CSS `<style>` di-inline ke atribut (flutter_svg tak mendukung
+   `<style>` — tadinya siluet hitam). Atribusi Mulberry tampil di
+   AccountScreen. Android: folder `android/` DI-REGENERATE dengan
+   template Flutter 3.44 (yang lama Gradle imperatif 3.7 → build
+   gagal); INTERNET permission + label AAC di manifest;
+   `CFBundleDisplayName` iOS = AAC. Build web ✓, build apk --debug ✓.
+   27 test pass (unit + widget: papan, folder, parental gate),
+   analyzer bersih. Testing di device/simulator nyata + rilis
+   bertanda tangan (signing) BELUM. (Selesai 2026-07-07)
 
 ## TODO sisi user (tidak bisa dikerjakan Claude)
 
@@ -115,6 +170,10 @@ flutter --no-version-check analyze
 - Mac pertama (id00242): Flutter di `~/development/flutter`; per
   2026-07-07 sedang di-upgrade dari 3.7.7 ke stable terbaru (3.44).
   Kalau flutter command menggantung, pakai `--no-version-check`.
+- Build Android butuh JDK 17: `brew install openjdk@17` lalu
+  `flutter config --jdk-dir=/opt/homebrew/opt/openjdk@17`
+  (Android Studio lama cuma bundel JBR 11). Sudah di-set di Mac kedua
+  (syarifs-air) 2026-07-07.
 - Laptop lain: cukup clone repo — CLAUDE.md ini adalah sumber
   kebenaran status proyek. Pastikan Flutter stable terbaru (Dart ≥3.5)
   dan Go ≥1.24.

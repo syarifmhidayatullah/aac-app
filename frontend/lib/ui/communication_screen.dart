@@ -4,12 +4,44 @@ import 'package:provider/provider.dart';
 import '../data/board_repository.dart';
 import '../data/db.dart';
 import '../state/communication_state.dart';
+import 'account/account_screen.dart';
+import 'editor/board_editor_screen.dart';
+import 'widgets/board_grid.dart';
 import 'widgets/cell_tile.dart';
+import 'widgets/parental_gate.dart';
 import 'widgets/sentence_strip.dart';
 
 /// Layar utama: sentence strip di atas, grid papan simbol di bawah.
 class CommunicationScreen extends StatelessWidget {
   const CommunicationScreen({super.key});
+
+  Future<void> _openEditor(BuildContext context) async {
+    final allowed = await showParentalGate(context);
+    if (!allowed || !context.mounted) return;
+
+    final state = context.read<CommunicationState>();
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => BoardEditorScreen(
+        repository: context.read<BoardRepository>(),
+        profileId: state.profileId,
+        initialBoardId: state.current?.board.id,
+      ),
+    ));
+    // Papan mungkin berubah selama mode edit.
+    await state.reload();
+  }
+
+  Future<void> _openAccount(BuildContext context) async {
+    final allowed = await showParentalGate(context);
+    if (!allowed || !context.mounted) return;
+
+    final state = context.read<CommunicationState>();
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => const AccountScreen(),
+    ));
+    // Sync bisa mengubah papan.
+    await state.reload();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +65,16 @@ class CommunicationScreen extends StatelessWidget {
               icon: const Icon(Icons.home_outlined),
               onPressed: state.goHome,
             ),
+          IconButton(
+            tooltip: 'Mode edit (orang tua)',
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () => _openEditor(context),
+          ),
+          IconButton(
+            tooltip: 'Akun & sinkronisasi (orang tua)',
+            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: () => _openAccount(context),
+          ),
         ],
       ),
       body: state.loading || board == null
@@ -70,17 +112,18 @@ class _BoardGrid extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.all(8),
-      child: GridView.builder(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: cols,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-        ),
-        itemCount: rows * cols,
-        itemBuilder: (context, index) {
-          final cell = byPosition[(index ~/ cols, index % cols)];
+      child: BoardGridLayout(
+        rows: rows,
+        cols: cols,
+        itemBuilder: (context, row, col) {
+          final cell = byPosition[(row, col)];
           if (cell == null) return const SizedBox.shrink();
-          return CellTile(cell: cell, onTap: () => onCellTap(cell));
+          return CellTile(
+            cell: cell,
+            symbol:
+                cell.symbolId == null ? null : board.symbols[cell.symbolId],
+            onTap: () => onCellTap(cell),
+          );
         },
       ),
     );
