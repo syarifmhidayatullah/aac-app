@@ -119,7 +119,7 @@ void main() {
 
   test('seed mengisi pustaka Mulberry dan menautkannya ke sel', () async {
     final symbols = await repository.searchSymbols('');
-    expect(symbols.length, 98);
+    expect(symbols.length, 143);
     expect(symbols.every((s) => s.pack == 'mulberry'), isTrue);
     expect(
         symbols.every(
@@ -149,21 +149,28 @@ void main() {
   test('searchSymbols dengan limit+offset paging tanpa duplikat/kelewat',
       () async {
     const pageSize = 60;
-    final page1 = await repository.searchSymbols('', limit: pageSize);
-    expect(page1.length, pageSize);
-
-    final page2 = await repository.searchSymbols('',
-        limit: pageSize, offset: pageSize);
-    expect(page2.length, 98 - pageSize);
-
-    final page1Ids = page1.map((s) => s.id).toSet();
-    final page2Ids = page2.map((s) => s.id).toSet();
-    expect(page1Ids.intersection(page2Ids), isEmpty);
-    expect(page1Ids.length + page2Ids.length, 98);
-
-    // Gabungan dua halaman = hasil tanpa paging sama sekali.
     final all = await repository.searchSymbols('');
-    expect({...page1Ids, ...page2Ids}, all.map((s) => s.id).toSet());
+    final total = all.length;
+
+    final pages = <List<Symbol>>[];
+    var offset = 0;
+    while (true) {
+      final page = await repository.searchSymbols('',
+          limit: pageSize, offset: offset);
+      pages.add(page);
+      offset += page.length;
+      if (page.length < pageSize) break;
+    }
+
+    // Setiap halaman kecuali yang terakhir harus penuh (pageSize), dan
+    // total gabungan tanpa duplikat/kelewat harus sama dengan hasil
+    // tanpa paging sama sekali.
+    for (var i = 0; i < pages.length - 1; i++) {
+      expect(pages[i].length, pageSize);
+    }
+    final pagedIds = pages.expand((p) => p.map((s) => s.id)).toSet();
+    expect(pagedIds.length, total);
+    expect(pagedIds, all.map((s) => s.id).toSet());
   });
 
   test('symbolCategoriesInUse mengembalikan kategori sesuai urutan',
