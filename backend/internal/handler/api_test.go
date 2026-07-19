@@ -43,7 +43,7 @@ func TestAPI(t *testing.T) {
 	if err := db.Migrate(url); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	pool, err := db.Connect(t.Context(), url)
+	pool, err := db.Connect(t.Context(), url, 0)
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}

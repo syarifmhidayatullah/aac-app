@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -13,6 +14,7 @@ import (
 type Config struct {
 	Port            string
 	DatabaseURL     string
+	DBMaxConns      int32
 	JWTSecret       []byte
 	TokenTTL        time.Duration
 	GoogleClientIDs []string
@@ -34,6 +36,7 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		Port:        getenv("PORT", "8080"),
 		DatabaseURL: buildDSN(dbHost),
+		DBMaxConns:  getenvInt32("DB_MAX_CONNS", 5),
 		UploadDir:   getenv("UPLOAD_DIR", "./uploads"),
 	}
 
@@ -80,6 +83,18 @@ func getenv(key, def string) string {
 		return v
 	}
 	return def
+}
+
+func getenvInt32(key string, def int32) int32 {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	n, err := strconv.ParseInt(v, 10, 32)
+	if err != nil {
+		return def
+	}
+	return int32(n)
 }
 
 func splitCSV(s string) []string {
