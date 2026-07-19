@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Gerbang orang tua: soal perkalian sederhana yang mudah bagi orang
 /// dewasa tapi menyulitkan anak — pola umum di app AAC (mis.
@@ -37,11 +38,13 @@ class _ParentalGateDialog extends StatefulWidget {
 
 class _ParentalGateDialogState extends State<_ParentalGateDialog> {
   final _controller = TextEditingController();
+  final _focusNode = FocusNode();
   bool _wrong = false;
 
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -54,9 +57,21 @@ class _ParentalGateDialogState extends State<_ParentalGateDialog> {
     }
   }
 
+  // Di iPad, keyboard yang ditutup manual (mis. gesture swipe-down) bisa
+  // nggak muncul lagi walau field masih fokus secara logis — paksa lewat
+  // platform channel kalau itu terjadi.
+  void _ensureKeyboardVisible() {
+    if (_focusNode.hasFocus) {
+      SystemChannels.textInput.invokeMethod<void>('TextInput.show');
+    } else {
+      _focusNode.requestFocus();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      scrollable: true,
       title: const Text('Khusus orang tua'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -69,9 +84,11 @@ class _ParentalGateDialogState extends State<_ParentalGateDialog> {
           const SizedBox(height: 12),
           TextField(
             controller: _controller,
+            focusNode: _focusNode,
             autofocus: true,
             keyboardType: TextInputType.number,
             textAlign: TextAlign.center,
+            onTap: _ensureKeyboardVisible,
             decoration: InputDecoration(
               border: const OutlineInputBorder(),
               errorText: _wrong ? 'Jawaban salah, coba lagi' : null,
